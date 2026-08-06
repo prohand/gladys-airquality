@@ -1,0 +1,192 @@
+// -----------------------------------------------------------------------------
+// Consistency checks between `gladys-assistant-integration.json` and the code.
+// The manifest is validated by the store indexer, but nothing there can know
+// which handlers the code registers, how many positions the delete dropdown
+// must offer, nor which countries the registry supports — these tests keep them
+// in sync so a forgotten step fails CI, not the install.
+// -----------------------------------------------------------------------------
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { DEFAULT_CONFIG, POLL_FREQUENCY_LIMITS } from '../src/config.js';
+import { COUNTRIES, DEFAULT_COUNTRY } from '../src/countries/index.js';
+import { DEVICE_BLUEPRINTS } from '../src/devices/index.js';
+import { DEFAULT_LANGUAGE, LANGUAGES } from '../src/language.js';
+import { createLocationEditor } from '../src/locationEditor.js';
+import { LOCATIONS_KEY, MAX_LOCATIONS } from '../src/locations.js';
+
+const manifest = JSON.parse(
+  await readFile(new URL('../gladys-assistant-integration.json', import.meta.url), 'utf8'),
+);
+
+// Every action key the code actually registers: the device blueprints own the
+// one about the data source, the location manager the ones about the list.
+const HANDLED_ACTIONS = [
+  ...DEVICE_BLUEPRINTS.flatMap((blueprint) => Object.keys(blueprint.actions ?? {})),
+  ...Object.keys(
+    createLocationEditor({
+      getConfig: () => ({ locations: [] }),
+      setConfig: async () => {},
+      onLocationsChanged: async () => {},
+    }).actions,
+  ),
+];
+
+// The store schema only accepts these widget types — 'text' is NOT one of them,
+// the free-text widget is called 'string'.
+const ALLOWED_FIELD_TYPES = [
+  'string',
+  'number',
+  'boolean',
+  'select',
+  'multi_select',
+  'secret',
+  'oauth2',
+  'section',
+];
+
+/** Every field of the manifest, config fields and action fields alike. */
+function allFields() {
+  return [
+    ...manifest.config_schema,
+    ...(manifest.actions ?? []).flatMap((action) => action.fields ?? []),
+  ];
+}
+
+function action(key) {
+  return (manifest.actions ?? []).find((a) => a.key === key);
+}
+
+function field(actionKey, fieldKey) {
+  return (action(actionKey)?.fields ?? []).find((f) => f.key === fieldKey);
+}
+
+test('every manifest action has a registered handler, and vice versa', () => {
+  for (const declared of manifest.actions ?? []) {
+    assert.ok(
+      HANDLED_ACTIONS.includes(declared.key),
+      `manifest action "${declared.key}" has no handler in the code`,
+    );
+  }
+  for (const handled of HANDLED_ACTIONS) {
+    assert.ok(
+      (manifest.actions ?? []).some((declared) => declared.key === handled),
+      `handler "${handled}" is not declared in the manifest: no button runs it`,
+    );
+  }
+});
+
+test('config_schema defaults stay consistent with DEFAULT_CONFIG', () => {
+  for (const f of manifest.config_schema) {
+    if (f.default !== undefined) {
+      assert.equal(
+        DEFAULT_CONFIG[f.key],
+        f.default,
+        `default of "${f.key}" differs between the manifest and src/config.js`,
+      );
+    }
+  }
+});
+
+test('the refresh interval bounds are the ones the code clamps to', () => {
+  const pollFrequency = manifest.config_schema.find((f) => f.key === 'poll_frequency');
+  assert.equal(pollFrequency.min, POLL_FREQUENCY_LIMITS.min);
+  assert.equal(pollFrequency.max, POLL_FREQUENCY_LIMITS.max);
+});
+
+test('the language select offers exactly the supported languages', () => {
+  const language = manifest.config_schema.find((f) => f.key === 'language');
+  assert.deepEqual(
+    language.options.map((option) => option.value),
+    LANGUAGES,
+  );
+  assert.equal(language.default, DEFAULT_LANGUAGE);
+});
+
+test('the country select offers exactly the registered countries', () => {
+  // The manifest is a static file: a country added to src/countries/ but not
+  // here is unreachable from the form, and vice versa.
+  const country = field('add_location', 'country');
+  assert.deepEqual(
+    country.options.map((option) => option.value),
+    COUNTRIES.map((c) => c.code),
+  );
+  assert.equal(country.default, DEFAULT_COUNTRY);
+});
+
+test('the location list is NOT a config_schema field', () => {
+  // No static form can hold a list built at runtime: it is stored outside the
+  // schema and manipulated through the actions. See src/locations.js.
+  assert.ok(
+    !manifest.config_schema.some((f) => f.key === LOCATIONS_KEY),
+    `"${LOCATIONS_KEY}" must stay out of config_schema`,
+  );
+});
+
+test('the delete dropdown offers exactly MAX_LOCATIONS positions', () => {
+  const location = field('remove_location', 'location');
+  assert.equal(location.options.length, MAX_LOCATIONS);
+  assert.deepEqual(
+    location.options.map((option) => option.value),
+    Array.from({ length: MAX_LOCATIONS }, (_, index) => String(index + 1)),
+  );
+});
+
+test('the deletion is guarded by a confirmation checkbox', () => {
+  const confirmation = field('remove_location', 'confirmation');
+  assert.equal(confirmation.type, 'boolean');
+  assert.equal(confirmation.default, false);
+});
+
+test('the postal code is the required input of the add action', () => {
+  assert.equal(field('add_location', 'postal_code').required, true);
+  assert.equal(field('add_location', 'city').required, false);
+  assert.equal(field('add_location', 'name').required, false);
+});
+
+test('every field uses a widget type the store accepts', () => {
+  for (const f of allFields()) {
+    assert.ok(ALLOWED_FIELD_TYPES.includes(f.type), `field "${f.key}": unsupported type ${f.type}`);
+  }
+});
+
+test('a section is a heading, never a value', () => {
+  for (const f of manifest.config_schema.filter((entry) => entry.type === 'section')) {
+    assert.equal(f.default, undefined, `section "${f.key}" must not carry a default`);
+    assert.equal(f.required, undefined, `section "${f.key}" must not be required`);
+  }
+});
+
+test('every label and description is written in both languages', () => {
+  const bilingual = (value, path) => {
+    assert.equal(typeof value?.en, 'string', `${path}: missing English`);
+    assert.equal(typeof value?.fr, 'string', `${path}: missing French`);
+  };
+
+  bilingual(manifest.description, 'manifest.description');
+  for (const f of allFields()) {
+    bilingual(f.label, `field ${f.key}.label`);
+    for (const option of f.options ?? []) {
+      bilingual(option.label, `option ${f.key}=${option.value}`);
+    }
+  }
+  for (const declared of manifest.actions ?? []) {
+    bilingual(declared.label, `action ${declared.key}.label`);
+    bilingual(declared.description, `action ${declared.key}.description`);
+  }
+});
+
+test('every action declares a timeout long enough for its network calls', () => {
+  for (const declared of manifest.actions ?? []) {
+    assert.ok(
+      Number.isInteger(declared.timeout_seconds) && declared.timeout_seconds > 0,
+      `action ${declared.key} has no usable timeout_seconds`,
+    );
+  }
+});
+
+test('the manifest declares the image and the version the release workflow rewrites', () => {
+  assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
+  assert.ok(manifest.docker_image.endsWith(`:${manifest.version}`));
+});

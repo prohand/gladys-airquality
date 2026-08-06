@@ -1,0 +1,419 @@
+{
+  "manifest_version": 1,
+  "type": "device",
+  "name": "Qualité de l'air",
+  "description": {
+    "en": "Air quality index of the locations you choose, by postal code, from the Copernicus CAMS European data.",
+    "fr": "Indice de qualité de l'air des lieux de votre choix, par code postal, à partir des données européennes CAMS de Copernicus."
+  },
+  "version": "1.0.0",
+  "docker_image": "ghcr.io/prohand/gladys-airquality:1.0.0",
+  "gladys_version": ">=4.62.0",
+  "cover_image": "https://raw.githubusercontent.com/prohand/gladys-airquality/main/cover.png",
+  "transports": ["cloud"],
+  "config_schema": [
+    {
+      "key": "intro",
+      "type": "section",
+      "label": {
+        "en": "How it works",
+        "fr": "Comment ça marche"
+      },
+      "description": {
+        "en": "Add a location with the button below: pick a country, type a postal code, and an air quality device appears in the Discovery tab, ready to be added to Gladys. Postal codes are resolved through the official French API Géo (geo.api.gouv.fr), and the pollutant concentrations come from the CAMS European air quality data (Copernicus), republished as open data by Open-Meteo: no account and no API key are needed. The index is the European Air Quality Index, whose six classes and thresholds are the ones the French ATMO index has used since 2021.",
+        "fr": "Ajoutez un lieu avec le bouton ci-dessous : choisissez un pays, saisissez un code postal, puis un appareil qualité de l'air apparaît dans l'onglet Découverte, prêt à être ajouté à Gladys. Les codes postaux sont résolus via l'API Géo officielle (geo.api.gouv.fr), et les concentrations de polluants proviennent des données européennes de qualité de l'air CAMS (Copernicus), rediffusées en open data par Open-Meteo : aucun compte ni clé d'API n'est nécessaire. L'indice est l'indice européen de qualité de l'air, dont les six classes et les seuils sont ceux de l'indice ATMO français depuis 2021."
+      },
+      "links": [
+        {
+          "url": "https://open-meteo.com/en/docs/air-quality-api",
+          "label": {
+            "en": "Open-Meteo Air Quality API",
+            "fr": "API Qualité de l'air Open-Meteo"
+          }
+        },
+        {
+          "url": "https://geo.api.gouv.fr/decoupage-administratif/communes",
+          "label": {
+            "en": "API Géo — communes",
+            "fr": "API Géo — communes"
+          }
+        },
+        {
+          "url": "https://www.atmo-france.org/article/lindice-atmo",
+          "label": {
+            "en": "The French ATMO index",
+            "fr": "L'indice ATMO"
+          }
+        }
+      ]
+    },
+    {
+      "key": "settings_section",
+      "type": "section",
+      "label": {
+        "en": "General settings",
+        "fr": "Réglages généraux"
+      },
+      "description": {
+        "en": "These settings apply to every configured location.",
+        "fr": "Ces réglages s'appliquent à tous les lieux configurés."
+      }
+    },
+    {
+      "key": "language",
+      "type": "select",
+      "label": {
+        "en": "Language of the device names",
+        "fr": "Langue du nom des appareils"
+      },
+      "description": {
+        "en": "The language the device and feature names are written in: \"Dominant pollutant\" or \"Polluant dominant\", \"Nitrogen dioxide (NO₂)\" or \"Dioxyde d'azote (NO₂)\". Everything else this integration displays already follows your Gladys language, but the name of a device and of its features is stored as it is published, so it has to be chosen here. A device already added to Gladys keeps the names it was created with: delete it and add it again from the Discovery tab to rename it.",
+        "fr": "La langue dans laquelle sont écrits les noms des polluants et des mesures : « Polluant dominant » ou « Dominant pollutant ». Tout le reste de ce que l'intégration affiche suit déjà la langue de votre compte Gladys, mais le nom d'un appareil et de ses fonctionnalités est enregistré tel qu'il est publié : il faut donc le choisir ici. Un appareil déjà ajouté à Gladys conserve les noms avec lesquels il a été créé : supprimez-le et rajoutez-le depuis l'onglet Découverte pour le renommer."
+      },
+      "required": false,
+      "default": "fr",
+      "options": [
+        {
+          "value": "fr",
+          "label": {
+            "en": "French",
+            "fr": "Français"
+          }
+        },
+        {
+          "value": "en",
+          "label": {
+            "en": "English",
+            "fr": "Anglais"
+          }
+        }
+      ]
+    },
+    {
+      "key": "poll_frequency",
+      "type": "number",
+      "label": {
+        "en": "Refresh interval (s)",
+        "fr": "Intervalle de rafraîchissement (s)"
+      },
+      "description": {
+        "en": "How often each location is refreshed, in seconds. The CAMS analysis is produced once an hour, so there is nothing to gain below one hour.",
+        "fr": "Fréquence de rafraîchissement de chaque lieu, en secondes. L'analyse CAMS est produite une fois par heure : descendre sous une heure n'apporte rien."
+      },
+      "required": false,
+      "default": 3600,
+      "min": 900,
+      "max": 86400
+    },
+    {
+      "key": "locations_section",
+      "type": "section",
+      "label": {
+        "en": "Your locations",
+        "fr": "Vos lieux"
+      },
+      "description": {
+        "en": "Use the buttons below to add, list and remove your locations. They are not fields of this form: a list you build as you go cannot be one, so everything about them happens under a button, and the answer displayed there is what shows you the list.",
+        "fr": "Utilisez les boutons ci-dessous pour ajouter, lister et supprimer vos lieux. Ce ne sont pas des champs de ce formulaire : une liste que l'on construit au fil de l'eau ne peut pas en être un, donc tout se passe sous un bouton et c'est la réponse affichée là qui vous montre la liste."
+      }
+    }
+  ],
+  "actions": [
+    {
+      "key": "add_location",
+      "label": {
+        "en": "Add a location",
+        "fr": "Ajouter un lieu"
+      },
+      "description": {
+        "en": "Resolves the postal code you type into a commune and adds a location watching it. Its device then shows up in the Discovery tab, and \"Show my locations\" lists it. A postal code shared by several communes asks you which one you meant.",
+        "fr": "Résout le code postal saisi en une commune et ajoute un lieu qui la surveille. Son appareil apparaît ensuite dans l'onglet Découverte, et « Afficher mes lieux » le liste. Un code postal partagé par plusieurs communes vous demande laquelle vous vouliez."
+      },
+      "timeout_seconds": 30,
+      "fields": [
+        {
+          "key": "name",
+          "type": "string",
+          "label": {
+            "en": "Location name",
+            "fr": "Nom du lieu"
+          },
+          "description": {
+            "en": "Optional: the name of the commune found is used when left empty.",
+            "fr": "Facultatif : le nom de la commune trouvée est utilisé si vous le laissez vide."
+          },
+          "required": false,
+          "placeholder": {
+            "en": "Home",
+            "fr": "Maison"
+          }
+        },
+        {
+          "key": "country",
+          "type": "select",
+          "label": {
+            "en": "Country",
+            "fr": "Pays"
+          },
+          "description": {
+            "en": "The country the postal code belongs to. Only France is supported for now — other countries will be added as their official open postal code directories are wired in.",
+            "fr": "Le pays auquel appartient le code postal. Seule la France est prise en charge pour l'instant — d'autres pays seront ajoutés au fur et à mesure du raccordement de leurs annuaires officiels ouverts de codes postaux."
+          },
+          "required": true,
+          "default": "FR",
+          "options": [
+            {
+              "value": "FR",
+              "label": {
+                "en": "France",
+                "fr": "France"
+              }
+            }
+          ]
+        },
+        {
+          "key": "postal_code",
+          "type": "string",
+          "label": {
+            "en": "Postal code",
+            "fr": "Code postal"
+          },
+          "description": {
+            "en": "The postal code of the place to watch, five digits in France. It is resolved into a commune through the official API Géo.",
+            "fr": "Le code postal du lieu à surveiller, cinq chiffres en France. Il est résolu en commune via l'API Géo officielle."
+          },
+          "required": true,
+          "placeholder": {
+            "en": "44000",
+            "fr": "44000"
+          }
+        },
+        {
+          "key": "city",
+          "type": "string",
+          "label": {
+            "en": "Commune (optional)",
+            "fr": "Commune (facultatif)"
+          },
+          "description": {
+            "en": "Only needed when the postal code covers several communes: run the action once without it and the answer lists them, then type the one you want here.",
+            "fr": "Utile seulement quand le code postal couvre plusieurs communes : lancez l'action une fois sans le remplir, la réponse les liste, puis saisissez ici celle que vous voulez."
+          },
+          "required": false,
+          "placeholder": {
+            "en": "Nantes",
+            "fr": "Nantes"
+          }
+        }
+      ]
+    },
+    {
+      "key": "list_locations",
+      "label": {
+        "en": "Show my locations",
+        "fr": "Afficher mes lieux"
+      },
+      "description": {
+        "en": "Lists every configured location: name, commune, postal code and coordinates. Each entry opens with a \"•\" and its number — the numbers the deletion dropdown offers.",
+        "fr": "Liste tous les lieux configurés : nom, commune, code postal et coordonnées. Chaque entrée commence par « • » et son numéro — les numéros que propose la liste déroulante de la suppression."
+      },
+      "timeout_seconds": 15
+    },
+    {
+      "key": "test_provider",
+      "label": {
+        "en": "Test the air quality source (all locations)",
+        "fr": "Tester la source de qualité de l'air (tous les lieux)"
+      },
+      "description": {
+        "en": "Reads the current data for every location and shows its index, in the format of \"Show my locations\": each entry opens with a \"•\" and its number.",
+        "fr": "Lit les données actuelles de chaque lieu et affiche son indice, au format d'« Afficher mes lieux » : chaque entrée commence par « • » et son numéro."
+      },
+      "timeout_seconds": 60
+    },
+    {
+      "key": "remove_location",
+      "label": {
+        "en": "Remove a location",
+        "fr": "Supprimer un lieu"
+      },
+      "description": {
+        "en": "Stops watching the location whose number you pick here — the numbers are the ones \"Show my locations\" lists. Its Gladys device is not deleted (an integration cannot do that): delete it yourself if you no longer want it.",
+        "fr": "Arrête de surveiller le lieu dont vous choisissez le numéro ici — ce sont les numéros qu'affiche « Afficher mes lieux ». Son appareil Gladys n'est pas supprimé (une intégration ne peut pas le faire) : supprimez-le vous-même si vous n'en voulez plus."
+      },
+      "timeout_seconds": 15,
+      "fields": [
+        {
+          "key": "location",
+          "type": "select",
+          "label": {
+            "en": "Location to remove",
+            "fr": "Lieu à supprimer"
+          },
+          "description": {
+            "en": "The number of the location to remove, as \"Show my locations\" numbers them.",
+            "fr": "Le numéro du lieu à supprimer, tel qu'« Afficher mes lieux » les numérote."
+          },
+          "required": true,
+          "default": "1",
+          "options": [
+            {
+              "value": "1",
+              "label": {
+                "en": "Location 1",
+                "fr": "Lieu 1"
+              }
+            },
+            {
+              "value": "2",
+              "label": {
+                "en": "Location 2",
+                "fr": "Lieu 2"
+              }
+            },
+            {
+              "value": "3",
+              "label": {
+                "en": "Location 3",
+                "fr": "Lieu 3"
+              }
+            },
+            {
+              "value": "4",
+              "label": {
+                "en": "Location 4",
+                "fr": "Lieu 4"
+              }
+            },
+            {
+              "value": "5",
+              "label": {
+                "en": "Location 5",
+                "fr": "Lieu 5"
+              }
+            },
+            {
+              "value": "6",
+              "label": {
+                "en": "Location 6",
+                "fr": "Lieu 6"
+              }
+            },
+            {
+              "value": "7",
+              "label": {
+                "en": "Location 7",
+                "fr": "Lieu 7"
+              }
+            },
+            {
+              "value": "8",
+              "label": {
+                "en": "Location 8",
+                "fr": "Lieu 8"
+              }
+            },
+            {
+              "value": "9",
+              "label": {
+                "en": "Location 9",
+                "fr": "Lieu 9"
+              }
+            },
+            {
+              "value": "10",
+              "label": {
+                "en": "Location 10",
+                "fr": "Lieu 10"
+              }
+            },
+            {
+              "value": "11",
+              "label": {
+                "en": "Location 11",
+                "fr": "Lieu 11"
+              }
+            },
+            {
+              "value": "12",
+              "label": {
+                "en": "Location 12",
+                "fr": "Lieu 12"
+              }
+            },
+            {
+              "value": "13",
+              "label": {
+                "en": "Location 13",
+                "fr": "Lieu 13"
+              }
+            },
+            {
+              "value": "14",
+              "label": {
+                "en": "Location 14",
+                "fr": "Lieu 14"
+              }
+            },
+            {
+              "value": "15",
+              "label": {
+                "en": "Location 15",
+                "fr": "Lieu 15"
+              }
+            },
+            {
+              "value": "16",
+              "label": {
+                "en": "Location 16",
+                "fr": "Lieu 16"
+              }
+            },
+            {
+              "value": "17",
+              "label": {
+                "en": "Location 17",
+                "fr": "Lieu 17"
+              }
+            },
+            {
+              "value": "18",
+              "label": {
+                "en": "Location 18",
+                "fr": "Lieu 18"
+              }
+            },
+            {
+              "value": "19",
+              "label": {
+                "en": "Location 19",
+                "fr": "Lieu 19"
+              }
+            },
+            {
+              "value": "20",
+              "label": {
+                "en": "Location 20",
+                "fr": "Lieu 20"
+              }
+            }
+          ]
+        },
+        {
+          "key": "confirmation",
+          "type": "boolean",
+          "label": {
+            "en": "I confirm the deletion",
+            "fr": "Je confirme la suppression"
+          },
+          "description": {
+            "en": "Run the action once unchecked to see which location would be removed.",
+            "fr": "Lancez l'action une fois sans cocher pour voir quel lieu serait supprimé."
+          },
+          "required": false,
+          "default": false
+        }
+      ]
+    }
+  ]
+}
