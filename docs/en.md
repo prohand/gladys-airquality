@@ -1,11 +1,34 @@
 # Air quality
 
 Follow the air quality index of the places you choose in Gladys, with one device
-per location. You add a location by typing the name of its **town**, **anywhere
-in the world**.
+per location. You add your **Gladys houses in one click**, or a location by
+typing the name of its **town**, **anywhere in the world**.
 
 No account to create, no API key to paste: both sources this integration uses
 are open and public.
+
+## Adding your Gladys houses, in one click
+
+You have already told Gladys where you live: that is the map in **Settings >
+Houses**. The **"Add my Gladys houses"** button reads those houses and creates a
+location for each one that is not watched yet — no town to type.
+
+Three things to know:
+
+- **The access is a permission.** Where you live is personal data: Gladys only
+  shares it if you accepted the request on the integration's install screen. If
+  the button answers that the access is refused, remove and re-install the
+  integration, accepting the request it shows.
+- **A house you never placed on the map has no coordinates.** It is named in the
+  answer; locate it in Settings > Houses and run the action again.
+- **This is not a sync.** The houses are read at the moment you click. What comes
+  out is an ordinary location, renamed and removed like the others, and a house
+  moved in Gladys afterwards does not move its location.
+
+Clicking again is safe: a house that is already watched is reported, not added a
+second time. A location that came from a house carries no address label: the
+listing shows its name and its point, because the geocoder cannot name the town
+a point sits in.
 
 ## Adding a location
 

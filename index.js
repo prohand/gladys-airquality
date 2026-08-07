@@ -129,10 +129,12 @@ async function republish() {
 }
 
 // The location manager owns everything the user does with the configured
-// locations: the three actions that add, list and delete them. It is given the
-// capabilities it cannot have on its own — writing the configuration,
+// locations: the four actions that add, import, list and delete them. It is
+// given the capabilities it cannot have on its own — writing the configuration,
 // re-publishing the devices, asking whether a point is covered — and nothing
-// else, which is what makes it testable offline.
+// else, which is what makes it testable offline. Reading the Gladys houses is
+// its own module's default (src/houses.js): it needs no handle from here, only
+// the two environment variables the supervisor injects.
 const locationEditor = createLocationEditor({
   getConfig: () => config,
   async setConfig(patch) {

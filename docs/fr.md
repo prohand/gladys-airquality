@@ -1,11 +1,36 @@
 # Qualité de l'air
 
 Suivez l'indice de qualité de l'air des lieux de votre choix dans Gladys, avec
-un appareil par lieu. Vous ajoutez un lieu en saisissant simplement le nom de sa
-**commune**, **n'importe où dans le monde**.
+un appareil par lieu. Vous ajoutez vos **maisons Gladys en un clic**, ou un lieu
+en saisissant simplement le nom de sa **commune**, **n'importe où dans le
+monde**.
 
 Aucun compte à créer, aucune clé d'API à saisir : les deux sources utilisées
 sont ouvertes et publiques.
+
+## Ajouter vos maisons Gladys, en un clic
+
+Vous avez déjà dit à Gladys où vous habitez : c'est la carte de **Réglages >
+Maisons**. Le bouton **« Ajouter mes maisons Gladys »** lit ces maisons et crée
+un lieu pour chacune qui n'est pas déjà surveillée — aucune commune à saisir.
+
+Trois choses à savoir :
+
+- **L'accès est une autorisation.** L'endroit où vous vivez est une donnée
+  personnelle : Gladys ne la partage que si vous l'avez accepté sur l'écran
+  d'installation de l'intégration. Si le bouton répond que l'accès est refusé,
+  supprimez puis réinstallez l'intégration en acceptant la demande affichée.
+- **Une maison sans position sur la carte n'a pas de coordonnées.** Elle est
+  nommée dans la réponse, et il suffit de la placer dans Réglages > Maisons puis
+  de relancer l'action.
+- **Ce n'est pas une synchronisation.** Les maisons sont lues au moment du clic.
+  Le lieu obtenu est un lieu ordinaire, que vous renommez et supprimez comme les
+  autres, et une maison déplacée dans Gladys ensuite ne déplace pas son lieu.
+
+Relancer l'action est sans risque : une maison déjà surveillée est signalée, pas
+ajoutée une deuxième fois. Un lieu venu d'une maison n'a pas de libellé
+d'adresse : la liste affiche son nom et son point, car le géocodeur ne sait pas
+nommer la commune qui contient un point.
 
 ## Ajouter un lieu
 

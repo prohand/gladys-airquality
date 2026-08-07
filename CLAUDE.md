@@ -51,8 +51,9 @@ postal code and a commune; that fallback is the migration, do not drop it.
 
 ### The location list is the single source of truth
 
-`src/locations.js` owns the data, `src/locationEditor.js` the three actions that
-change it. Consequences worth internalising:
+`src/locations.js` owns the data, `src/locationEditor.js` the four actions that
+change it (`add_location`, `import_houses`, `list_locations`,
+`remove_location`). Consequences worth internalising:
 
 - **`locations` is deliberately absent from `config_schema`.** No static form can
   hold a list built at runtime. It is written through `gladys.setConfig()` — the
@@ -102,6 +103,29 @@ Re-publishing does NOT rename an existing device: the core upserts the params of
 the devices already created, never their name. A language switch therefore
 applies to the devices still to be created, which the manifest description and
 `docs/` both say.
+
+### The Gladys houses are a permission, not just an endpoint
+
+`src/houses.js` reads `GET /api/integration/v1/house` — the coordinates the user
+already placed on the map in "Settings > Houses" — and `import_houses` turns them
+into locations in one click. Three things hold it together:
+
+- **`"location": true` in the manifest is an authorization contract.** Where
+  somebody lives is personal data: the core shows the request on the install
+  screen and enforces it server-side, so an integration that does not declare it
+  gets a **403**. That status is therefore told apart from every other failure
+  (`HOUSE_ACCESS_DENIED`) and answered with "re-install to grant it" — a retry
+  fixes nothing. `gladys_version` is `>=4.85.0`, the version that opened the
+  endpoint, and `test/manifest.test.js` checks both.
+- **The call is made by hand**, with `GLADYS_HOST_API_URL` and
+  `GLADYS_INTEGRATION_TOKEN`, because the JS SDK does not wrap the endpoint
+  (0.11.0). Both are injected for the test, so `test/houses.test.js` never
+  touches the network.
+- **It is an import, not a sync.** The houses are read at the click; what comes
+  out is ordinary locations. A house with `latitude: null` (never placed on the
+  map) is REPORTED, never taken as 0 — that is the Gulf of Guinea. The whole
+  import is one `setConfig` and one re-publish, and nothing is written when
+  nothing is added.
 
 ### There is no country anywhere, and that is the design
 
