@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------------
-// The three buttons of the Configuration screen, exercised with no Gladys and
+// The four buttons of the Configuration screen, exercised with no Gladys and
 // no network: the editor takes its whole outside world by injection.
 //
 // Every expected outcome is RETURNED as an { en, fr } object — a thrown error
@@ -11,6 +11,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { normalizeConfig } from '../src/config.js';
 import { MAX_LISTED_CANDIDATES } from '../src/geocoding.js';
+import { HOUSE_ACCESS_DENIED } from '../src/houses.js';
 import { createLocationEditor } from '../src/locationEditor.js';
 import { LOCATIONS_KEY, MAX_LOCATIONS } from '../src/locations.js';
 
@@ -43,7 +44,13 @@ const TOKYO = {
  * what was written, how many times the devices were re-published, and which
  * queries were geocoded.
  */
-function createEditor({ locations = [], resolve = null, isCovered = () => true } = {}) {
+function createEditor({
+  locations = [],
+  resolve = null,
+  isCovered = () => true,
+  houses = [],
+  houseError = null,
+} = {}) {
   const state = { config: normalizeConfig({ [LOCATIONS_KEY]: locations }) };
   const written = [];
   const queries = [];
@@ -66,6 +73,12 @@ function createEditor({ locations = [], resolve = null, isCovered = () => true }
       return { match: candidates.length === 1 ? candidates[0] : null, candidates };
     },
     findCreatedDevice: async () => null,
+    async listHouses() {
+      if (houseError) {
+        throw houseError;
+      }
+      return houses;
+    },
   });
 
   return {
@@ -233,6 +246,140 @@ test('the cap is enforced before anything is queried', async () => {
   assert.equal(editor.queries.length, 0);
 });
 
+/** One house as `GET /house` hands it over, coordinates included or not. */
+function house(name, latitude = null, longitude = null) {
+  return { id: `h-${name}`, name, selector: name.toLowerCase(), latitude, longitude };
+}
+
+test('the Gladys houses become locations in one click', async () => {
+  const editor = createEditor({
+    houses: [house('Maison', 47.2172, -1.5534), house('Chalet', 46.5, 6.6)],
+  });
+
+  const message = await editor.import_houses();
+
+  assert.match(message.fr, /2 maison\(s\) Gladys ajoutée\(s\)/);
+  assert.match(message.fr, /Découverte/, 'the answer says where the devices show up');
+  assert.equal(editor.state.config.locations.length, 2);
+  const [maison, chalet] = editor.state.config.locations;
+  assert.equal(maison.name, 'Maison');
+  assert.equal(maison.latitude, 47.2172);
+  assert.equal(maison.address_label, '', 'a house is a point, not an address');
+  assert.equal(chalet.name, 'Chalet');
+  assert.equal(editor.queries.length, 0, 'a house needs no geocoding: it IS a point');
+  assert.equal(editor.written.length, 1, 'the whole import is ONE write');
+  assert.equal(editor.republished, 1, 'and ONE Discovery refresh');
+});
+
+test('a house already watched is named rather than added twice', async () => {
+  const editor = createEditor({
+    locations: [{ id: 'loc-1', name: 'Domicile', latitude: '47.2172', longitude: '-1.5534' }],
+    houses: [house('Maison', 47.2172, -1.5534), house('Chalet', 46.5, 6.6)],
+  });
+
+  const message = await editor.import_houses();
+
+  assert.match(message.fr, /1 maison\(s\) Gladys ajoutée\(s\)/);
+  assert.match(message.fr, /déjà le lieu 1 « Domicile »/);
+  assert.equal(editor.state.config.locations.length, 2);
+});
+
+test('a house with no position on the map is not watched at (0, 0)', async () => {
+  const editor = createEditor({ houses: [house('Bureau'), house('Maison', 47.2172, -1.5534)] });
+
+  const message = await editor.import_houses();
+
+  assert.match(message.fr, /Sans position sur la carte/);
+  assert.match(message.fr, /« Bureau »/);
+  assert.match(message.fr, /Réglages > Maisons/);
+  assert.equal(editor.state.config.locations.length, 1);
+  assert.equal(editor.state.config.locations[0].name, 'Maison');
+});
+
+test('a house no source covers is named rather than published empty', async () => {
+  const editor = createEditor({
+    houses: [house('Maison', 47.2172, -1.5534)],
+    isCovered: () => false,
+  });
+
+  const message = await editor.import_houses();
+
+  assert.match(message.fr, /Aucune source de qualité de l'air/);
+  assert.match(message.fr, /« Maison »/);
+  assert.equal(editor.state.config.locations.length, 0);
+});
+
+test('nothing to import writes nothing at all', async () => {
+  const editor = createEditor({
+    locations: [{ id: 'loc-1', name: 'Domicile', latitude: '47.2172', longitude: '-1.5534' }],
+    houses: [house('Maison', 47.2172, -1.5534)],
+  });
+
+  const message = await editor.import_houses();
+
+  assert.match(message.fr, /Aucune maison à ajouter/);
+  assert.equal(editor.written.length, 0, 'no write means no needless Discovery refresh');
+  assert.equal(editor.republished, 0);
+});
+
+test('an instance with no house says where to create one', async () => {
+  const editor = createEditor({ houses: [] });
+  const message = await editor.import_houses();
+
+  assert.match(message.fr, /aucune maison/i);
+  assert.match(message.fr, /Réglages > Maisons/);
+});
+
+test('a refused permission tells the user to re-install, not to retry', async () => {
+  // A 403 is the install screen's answer, not an outage: nothing the user does
+  // in this screen grants it.
+  const denied = Object.assign(new Error('HTTP 403'), { code: HOUSE_ACCESS_DENIED });
+  const editor = createEditor({ houseError: denied });
+
+  const message = await editor.import_houses();
+
+  assert.match(message.fr, /réinstallez/i);
+  assert.match(message.en, /re-install/i);
+  assert.equal(editor.state.config.locations.length, 0);
+});
+
+test('the houses being unreadable falls back on the town name, and never throws', async () => {
+  const editor = createEditor({ houseError: new Error('Gladys host API HTTP 500') });
+  const message = await editor.import_houses();
+
+  assert.match(message.fr, /HTTP 500/);
+  assert.match(message.fr, /commune/);
+});
+
+test('the import respects the cap and names what it left out', async () => {
+  const locations = Array.from({ length: MAX_LOCATIONS - 1 }, (_, index) => ({
+    id: `loc-${index}`,
+    name: `Lieu ${index}`,
+    latitude: String(40 + index),
+    longitude: '2.5',
+  }));
+  const editor = createEditor({
+    locations,
+    houses: [house('Maison', 47.2172, -1.5534), house('Chalet', 46.5, 6.6)],
+  });
+
+  const message = await editor.import_houses();
+
+  assert.equal(editor.state.config.locations.length, MAX_LOCATIONS);
+  assert.match(message.fr, new RegExp(`Maximum de ${MAX_LOCATIONS} lieux`));
+  assert.match(message.fr, /« Chalet »/);
+});
+
+test('an imported house is an ordinary location, deleted like any other', async () => {
+  const editor = createEditor({ houses: [house('Maison', 47.2172, -1.5534)] });
+  await editor.import_houses();
+
+  const message = await editor.remove_location({ location: '1', confirmation: true });
+
+  assert.match(message.fr, /supprimé/);
+  assert.equal(editor.state.config.locations.length, 0);
+});
+
 test('the listing numbers the locations the delete dropdown offers', async () => {
   const editor = createEditor();
   await editor.add_location({ name: 'Maison', place: 'Nantes' });
@@ -355,9 +502,10 @@ test('deleting from an empty list points at the button that fills it', async () 
 });
 
 test('every action answers in both languages, never as a bare string', async () => {
-  const editor = createEditor();
+  const editor = createEditor({ houses: [house('Chalet', 46.5, 6.6)] });
   const messages = [
     await editor.add_location({ place: 'Nantes' }),
+    await editor.import_houses(),
     await editor.list_locations(),
     await editor.remove_location({ location: '1' }),
   ];

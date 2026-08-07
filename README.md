@@ -11,9 +11,17 @@ starter, on the JavaScript SDK
 
 ## What you get
 
-Add a location from the Configuration screen (a town name, or a pair of
-coordinates), and a device shows up in the **Discovery** tab, ready to be added
-to Gladys. Each device exposes:
+Add a location from the Configuration screen — one click on **"Add my Gladys
+houses"**, or a town name, or a pair of coordinates — and a device shows up in
+the **Discovery** tab, ready to be added to Gladys.
+
+The one-click button reads the houses the user already placed on the map in
+Gladys (`GET /house`, opened by Gladys 4.85.0). That is a permission, not just an
+endpoint: the manifest declares `"location": true`, the install screen shows the
+request, and the core answers 403 to an integration that did not ask. It is also
+why `gladys_version` is `>=4.85.0`.
+
+Each device exposes:
 
 | Feature                                   | Category                     | Value                                         |
 | ----------------------------------------- | ---------------------------- | --------------------------------------------- |
@@ -112,13 +120,14 @@ the geocoder does not know can still be added by its latitude and longitude.
 │  │  ├─ openMeteo.js                #   CAMS Europe + CAMS global (no key)
 │  │  └─ scale.js                    #   µg/m³ -> 1-6 index (EEA / ATMO bands)
 │  ├─ geocoding.js                   # town -> coordinates, worldwide (GeoNames)
+│  ├─ houses.js                      # the user's Gladys houses (GET /house)
 │  ├─ devices/
 │  │  ├─ index.js                    #   blueprint registry
 │  │  └─ airQualityStation.js        #   the device: features, states, refresh
 │  ├─ config.js                      # config defaults + normalization
 │  ├─ coordinates.js                 # WGS-84 parsing/formatting
 │  ├─ language.js                    # language of the device NAMES
-│  ├─ locationEditor.js              # the three buttons: add / list / remove
+│  ├─ locationEditor.js              # the buttons: add / import houses / list / remove
 │  ├─ locations.js                   # the location list (source of truth)
 │  └─ richText.js                    # Unicode bold for the list labels
 ├─ docs/{en,fr}.md                   # user documentation, linked from Gladys

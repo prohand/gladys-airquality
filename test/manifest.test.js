@@ -209,6 +209,22 @@ test('every action declares a timeout long enough for its network calls', () => 
   }
 });
 
+test('the manifest asks for the house coordinates the import button reads', () => {
+  // `GET /house` is an authorization contract, not just an endpoint: without
+  // this line the core answers 403 and "Add my Gladys houses" can only apologize.
+  assert.equal(manifest.location, true, 'import_houses reads GET /house');
+  assert.ok(
+    (manifest.actions ?? []).some((declared) => declared.key === 'import_houses'),
+    'the permission is asked for a button that must exist',
+  );
+});
+
+test('the compatibility range covers the version that opened GET /house', () => {
+  // Before 4.85.0 the endpoint does not exist at all, and the one-click import
+  // is the only way in that needs nothing typed.
+  assert.match(manifest.gladys_version, /^>=4\.(8[5-9]|9\d|\d{3,})\./);
+});
+
 test('the manifest declares the image and the version the release workflow rewrites', () => {
   assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
   assert.ok(manifest.docker_image.endsWith(`:${manifest.version}`));
