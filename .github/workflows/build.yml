@@ -14,6 +14,14 @@
 #
 # That is ALL it takes to "publish": tag, push, and the decentralized indexer
 # does the rest (no review, no account to create).
+#
+# NOTE — why this workflow may be missing from the Actions tab. GitHub only
+# lists a workflow once it has INDEXED it, and it indexes one when a push to the
+# default branch touches its file. A workflow whose triggers never fire on an
+# ordinary push (this one runs on a tag, a manual run or a call) is therefore
+# invisible until such a push happens: on a brand new repository, the very first
+# commit registers only the workflows that commit actually triggered. One more
+# push to the default branch touching this file is all it takes.
 # -----------------------------------------------------------------------------
 name: Build and publish image
 

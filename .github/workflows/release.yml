@@ -14,6 +14,13 @@
 # Why call build.yml instead of relying on the tag push: a tag pushed with the
 # default GITHUB_TOKEN does NOT trigger other workflows, so we invoke the build
 # ourselves. No personal access token to create.
+#
+# NOTE — why this workflow may be missing from the Actions tab. GitHub only
+# lists a workflow once it has INDEXED it, and it indexes one when a push to the
+# default branch touches its file. `workflow_dispatch` alone never fires on a
+# push, so on a brand new repository the first commit registers only the
+# workflows it actually triggered (the CI one) and this entry stays invisible.
+# One more push to the default branch touching this file is all it takes.
 # -----------------------------------------------------------------------------
 name: Release
 
