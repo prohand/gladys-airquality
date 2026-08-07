@@ -127,6 +127,22 @@ Docker image ships with.
 `cover.png` is still the template's placeholder: replace it (800×534 px, ≤150 KB)
 before publishing to the Gladys catalog.
 
+## Workflows
+
+Three, all from the template:
+
+| Workflow      | Runs on                                          | Does                             |
+| ------------- | ------------------------------------------------ | -------------------------------- |
+| `ci.yml`      | push to `main`, pull requests                    | `format:check` → `lint` → `test` |
+| `build.yml`   | a `v*` tag, a manual run, or called by `release` | multi-arch image → ghcr.io       |
+| `release.yml` | manual run only (patch/minor/major)              | bump + tag + call `build.yml`    |
+
+If the Actions tab shows fewer than three, they are not missing from the repo:
+GitHub indexes a workflow when a push to the **default branch touches its
+file**, so the two that never fire on an ordinary push stay invisible until such
+a push happens. On a brand new repository the first commit registers only the
+workflows it actually triggered. Any later push touching them fixes it.
+
 ## Releasing
 
 GitHub → Actions → **Release** → _Run workflow_ → pick patch/minor/major. The
