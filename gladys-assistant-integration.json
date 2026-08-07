@@ -3,8 +3,8 @@
   "type": "device",
   "name": "Qualité de l'air",
   "description": {
-    "en": "Air quality index of the locations you choose, by postal code, from the Copernicus CAMS data.",
-    "fr": "Indice de qualité de l'air des lieux de votre choix, par code postal, données CAMS Copernicus."
+    "en": "Air quality index of any town in the world, from the Copernicus CAMS data.",
+    "fr": "Indice de qualité de l'air de n'importe quelle commune du monde, données CAMS Copernicus."
   },
   "version": "1.0.0",
   "docker_image": "ghcr.io/prohand/gladys-airquality:1.0.0",
@@ -20,8 +20,8 @@
         "fr": "Comment ça marche"
       },
       "description": {
-        "en": "Add a location with the button below: pick a country, type a postal code, and an air quality device appears in the Discovery tab, ready to be added to Gladys. Postal codes are resolved through the official French API Géo (geo.api.gouv.fr), and the pollutant concentrations come from the CAMS European air quality data (Copernicus), republished as open data by Open-Meteo: no account and no API key are needed. The index is the European Air Quality Index, whose six classes and thresholds are the ones the French ATMO index has used since 2021.",
-        "fr": "Ajoutez un lieu avec le bouton ci-dessous : choisissez un pays, saisissez un code postal, puis un appareil qualité de l'air apparaît dans l'onglet Découverte, prêt à être ajouté à Gladys. Les codes postaux sont résolus via l'API Géo officielle (geo.api.gouv.fr), et les concentrations de polluants proviennent des données européennes de qualité de l'air CAMS (Copernicus), rediffusées en open data par Open-Meteo : aucun compte ni clé d'API n'est nécessaire. L'indice est l'indice européen de qualité de l'air, dont les six classes et les seuils sont ceux de l'indice ATMO français depuis 2021."
+        "en": "Add a location with the button below: type a town, anywhere in the world, and an air quality device appears in the Discovery tab, ready to be added to Gladys. Towns are resolved by the Open-Meteo geocoding API (GeoNames), and the pollutant concentrations come from the Copernicus CAMS data, republished as open data by Open-Meteo: no account and no API key are needed. In Europe the ~11 km CAMS European model is used, elsewhere the ~40 km CAMS global one. The index is the European Air Quality Index, whose six classes and thresholds are the ones the French ATMO index has used since 2021 — it is applied worldwide, so it is not the local national index of a country outside Europe.",
+        "fr": "Ajoutez un lieu avec le bouton ci-dessous : saisissez une commune, n'importe où dans le monde, puis un appareil qualité de l'air apparaît dans l'onglet Découverte, prêt à être ajouté à Gladys. Les communes sont résolues par l'API de géocodage Open-Meteo (GeoNames), et les concentrations de polluants proviennent des données CAMS de Copernicus, rediffusées en open data par Open-Meteo : aucun compte ni clé d'API n'est nécessaire. En Europe c'est le modèle CAMS européen à ~11 km qui est utilisé, ailleurs le modèle CAMS mondial à ~40 km. L'indice est l'indice européen de qualité de l'air, dont les six classes et les seuils sont ceux de l'indice ATMO français depuis 2021 — il est appliqué partout, ce n'est donc pas l'indice national local d'un pays hors d'Europe."
       },
       "links": [
         {
@@ -32,10 +32,10 @@
           }
         },
         {
-          "url": "https://geo.api.gouv.fr/decoupage-administratif/communes",
+          "url": "https://open-meteo.com/en/docs/geocoding-api",
           "label": {
-            "en": "API Géo — communes",
-            "fr": "API Géo — communes"
+            "en": "Open-Meteo geocoding API",
+            "fr": "API de géocodage Open-Meteo"
           }
         },
         {
@@ -126,8 +126,8 @@
         "fr": "Ajouter un lieu"
       },
       "description": {
-        "en": "Resolves the postal code you type into a commune and adds a location watching it. Its device then shows up in the Discovery tab, and \"Show my locations\" lists it. A postal code shared by several communes asks you which one you meant.",
-        "fr": "Résout le code postal saisi en une commune et ajoute un lieu qui la surveille. Son appareil apparaît ensuite dans l'onglet Découverte, et « Afficher mes lieux » le liste. Un code postal partagé par plusieurs communes vous demande laquelle vous vouliez."
+        "en": "Geocodes the town you type — anywhere in the world — and adds a location watching that point. Fill the latitude and the longitude in instead to add a point directly. Its device then shows up in the Discovery tab, and \"Show my locations\" lists it. A name shared by several places asks you which one you meant.",
+        "fr": "Géocode la commune saisie — n'importe où dans le monde — et ajoute un lieu surveillant ce point. Renseignez plutôt la latitude et la longitude pour ajouter un point directement. Son appareil apparaît ensuite dans l'onglet Découverte, et « Afficher mes lieux » le liste. Un nom partagé par plusieurs lieux vous demande lequel vous vouliez."
       },
       "timeout_seconds": 30,
       "fields": [
@@ -139,8 +139,8 @@
             "fr": "Nom du lieu"
           },
           "description": {
-            "en": "Optional: the name of the commune found is used when left empty.",
-            "fr": "Facultatif : le nom de la commune trouvée est utilisé si vous le laissez vide."
+            "en": "Optional: the name of the place found is used when left empty.",
+            "fr": "Facultatif : le nom du lieu trouvé est utilisé si vous le laissez vide."
           },
           "required": false,
           "placeholder": {
@@ -149,60 +149,54 @@
           }
         },
         {
-          "key": "country",
-          "type": "select",
-          "label": {
-            "en": "Country",
-            "fr": "Pays"
-          },
-          "description": {
-            "en": "The country the postal code belongs to. Only France is supported for now — other countries will be added as their official open postal code directories are wired in.",
-            "fr": "Le pays auquel appartient le code postal. Seule la France est prise en charge pour l'instant — d'autres pays seront ajoutés au fur et à mesure du raccordement de leurs annuaires officiels ouverts de codes postaux."
-          },
-          "required": true,
-          "default": "FR",
-          "options": [
-            {
-              "value": "FR",
-              "label": {
-                "en": "France",
-                "fr": "France"
-              }
-            }
-          ]
-        },
-        {
-          "key": "postal_code",
+          "key": "place",
           "type": "string",
           "label": {
-            "en": "Postal code",
-            "fr": "Code postal"
+            "en": "Town",
+            "fr": "Commune"
           },
           "description": {
-            "en": "The postal code of the place to watch, five digits in France. It is resolved into a commune through the official API Géo.",
-            "fr": "Le code postal du lieu à surveiller, cinq chiffres en France. Il est résolu en commune via l'API Géo officielle."
-          },
-          "required": true,
-          "placeholder": {
-            "en": "44000",
-            "fr": "44000"
-          }
-        },
-        {
-          "key": "city",
-          "type": "string",
-          "label": {
-            "en": "Commune (optional)",
-            "fr": "Commune (facultatif)"
-          },
-          "description": {
-            "en": "Only needed when the postal code covers several communes: run the action once without it and the answer lists them, then type the one you want here.",
-            "fr": "Utile seulement quand le code postal couvre plusieurs communes : lancez l'action une fois sans le remplir, la réponse les liste, puis saisissez ici celle que vous voulez."
+            "en": "The town to watch, anywhere in the world. Several places share most names: add a comma and the region, the country or the postal code to narrow it down, e.g. \"Montauban, Tarn-et-Garonne\" or \"Springfield, Illinois\". Optional if you fill the two coordinates in below.",
+            "fr": "La commune à surveiller, n'importe où dans le monde. La plupart des noms sont partagés par plusieurs lieux : ajoutez une virgule puis la région, le pays ou le code postal pour préciser, par exemple « Montauban, Tarn-et-Garonne » ou « Springfield, Illinois ». Facultatif si vous renseignez les deux coordonnées ci-dessous."
           },
           "required": false,
           "placeholder": {
-            "en": "Nantes",
-            "fr": "Nantes"
+            "en": "Nantes, France",
+            "fr": "Nantes, France"
+          }
+        },
+        {
+          "key": "latitude",
+          "type": "string",
+          "label": {
+            "en": "Latitude (optional)",
+            "fr": "Latitude (facultatif)"
+          },
+          "description": {
+            "en": "WGS-84 decimal degrees, -90 to 90. Filled in together with the longitude, this point is used as it is and the town above is then only a label.",
+            "fr": "Degrés décimaux WGS-84, de -90 à 90. Renseignée avec la longitude, ce point est utilisé tel quel et la commune ci-dessus ne sert plus que de libellé."
+          },
+          "required": false,
+          "placeholder": {
+            "en": "48.8566",
+            "fr": "48,8566"
+          }
+        },
+        {
+          "key": "longitude",
+          "type": "string",
+          "label": {
+            "en": "Longitude (optional)",
+            "fr": "Longitude (facultatif)"
+          },
+          "description": {
+            "en": "WGS-84 decimal degrees, -180 to 180. Both coordinates go together: one alone is not a point.",
+            "fr": "Degrés décimaux WGS-84, de -180 à 180. Les deux coordonnées vont ensemble : une seule ne fait pas un point."
+          },
+          "required": false,
+          "placeholder": {
+            "en": "2.3522",
+            "fr": "2,3522"
           }
         }
       ]
@@ -214,8 +208,8 @@
         "fr": "Afficher mes lieux"
       },
       "description": {
-        "en": "Lists every configured location: name, commune, postal code and coordinates. Each entry opens with a \"•\" and its number — the numbers the deletion dropdown offers.",
-        "fr": "Liste tous les lieux configurés : nom, commune, code postal et coordonnées. Chaque entrée commence par « • » et son numéro — les numéros que propose la liste déroulante de la suppression."
+        "en": "Lists every configured location: name, place and coordinates. Each entry opens with a \"•\" and its number — the numbers the deletion dropdown offers.",
+        "fr": "Liste tous les lieux configurés : nom, lieu et coordonnées. Chaque entrée commence par « • » et son numéro — les numéros que propose la liste déroulante de la suppression."
       },
       "timeout_seconds": 15
     },

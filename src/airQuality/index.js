@@ -1,28 +1,27 @@
 // -----------------------------------------------------------------------------
 // Air quality provider registry.
 //
-// A provider knows how to read pollutant concentrations for a point. Today a
-// single one is registered (Open-Meteo / CAMS Europe), but the lookup goes
-// through `findProvider()` so adding a source for another region is a one-line
-// change here plus a new file next to `openMeteo.js` — the device code never
-// names a provider.
+// A provider knows how to read pollutant concentrations for a point. Two are
+// registered, and their ORDER is the whole logic: the first one that supports
+// the point wins, so the finer regional model is asked wherever it has data and
+// the global one answers everywhere else. Callers never name an implementation.
 //
 // To add one:
 //   1. create `src/airQuality/<yourProvider>.js` exposing { key, name,
 //      pollutants, supports(point), fetchConcentrations(point) };
-//   2. append it to PROVIDERS below, BEFORE the more generic ones (the first
-//      provider that supports the point wins, so a national source can override
-//      the continental one for its own country).
+//   2. append it to PROVIDERS below, BEFORE the more generic ones — a national
+//      source registered ahead of the CAMS ones overrides them for its own area,
+//      and the global provider must stay LAST since it supports every point.
 //
-// This is deliberately a SEPARATE registry from `src/countries/`: reading the
-// air of a point and turning a postal code into a point are two different
-// problems, and a new country usually only needs the second one.
+// This is deliberately separate from `src/geocoding.js`: reading the air of a
+// point and turning what the user typed into a point are two different problems.
 // -----------------------------------------------------------------------------
 
-import { openMeteoProvider } from './openMeteo.js';
+import { openMeteoEuropeProvider, openMeteoGlobalProvider } from './openMeteo.js';
 import { concentrationToIndex, overallIndex } from './scale.js';
 
-export const PROVIDERS = [openMeteoProvider];
+// Europe first (the ~11 km regional ensemble), the planet second (~40 km).
+export const PROVIDERS = [openMeteoEuropeProvider, openMeteoGlobalProvider];
 
 /**
  * Pick the provider that covers a point.
@@ -64,9 +63,11 @@ export function allPollutants() {
 export async function readAirQuality(point) {
   const provider = findProvider(point);
   if (!provider) {
+    // The global provider covers every point on Earth, so getting here means
+    // the location does not hold one: a coordinate out of range, or none.
     throw new Error(
       `No air quality provider covers ${point.latitude},${point.longitude} ` +
-        '(readings are currently limited to the CAMS European domain)',
+        '(that is not a point: latitude -90..90, longitude -180..180)',
     );
   }
 

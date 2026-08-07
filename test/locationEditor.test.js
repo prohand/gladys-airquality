@@ -10,29 +10,43 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { normalizeConfig } from '../src/config.js';
-import { createLocationEditor, MAX_LISTED_PLACES } from '../src/locationEditor.js';
+import { MAX_LISTED_CANDIDATES } from '../src/geocoding.js';
+import { createLocationEditor } from '../src/locationEditor.js';
 import { LOCATIONS_KEY, MAX_LOCATIONS } from '../src/locations.js';
 
 const NANTES = {
   name: 'Nantes',
-  postal_code: '44000',
-  context: 'Loire-Atlantique',
   latitude: 47.2172,
   longitude: -1.5534,
+  country: 'France',
+  country_code: 'FR',
+  admin1: 'Pays de la Loire',
+  admin2: 'Loire-Atlantique',
+  admin3: '',
+  postcodes: ['44000'],
+};
+
+const TOKYO = {
+  ...NANTES,
+  name: 'Tokyo',
+  latitude: 35.6895,
+  longitude: 139.6917,
+  country: 'Japon',
+  country_code: 'JP',
+  admin1: 'Tokyo',
+  admin2: '',
+  postcodes: [],
 };
 
 /**
  * An editor over an in-memory configuration, plus the handles a test needs:
  * what was written, how many times the devices were re-published, and which
- * lookups were made.
+ * queries were geocoded.
  */
-function createEditor({ locations = [], places = null, isCovered = () => true } = {}) {
-  // Default: one commune, carrying the postal code that was asked for — a stub
-  // answering a fixed code would make every second add look like a duplicate.
-  const resolve = places ?? ((postalCode) => [{ ...NANTES, postal_code: postalCode }]);
+function createEditor({ locations = [], resolve = null, isCovered = () => true } = {}) {
   const state = { config: normalizeConfig({ [LOCATIONS_KEY]: locations }) };
   const written = [];
-  const lookups = [];
+  const queries = [];
   let republished = 0;
 
   const editor = createLocationEditor({
@@ -45,9 +59,11 @@ function createEditor({ locations = [], places = null, isCovered = () => true } 
       republished += 1;
     },
     isCovered,
-    async lookupPlaces(countryCode, postalCode) {
-      lookups.push({ countryCode, postalCode });
-      return typeof resolve === 'function' ? resolve(postalCode) : resolve;
+    async resolvePlace(query, language) {
+      queries.push({ query, language });
+      // Default: one unambiguous place, whatever was typed.
+      const candidates = resolve ? resolve(query) : [NANTES];
+      return { match: candidates.length === 1 ? candidates[0] : null, candidates };
     },
     findCreatedDevice: async () => null,
   });
@@ -56,153 +72,140 @@ function createEditor({ locations = [], places = null, isCovered = () => true } 
     ...editor.actions,
     state,
     written,
-    lookups,
+    queries,
     get republished() {
       return republished;
     },
   };
 }
 
-test('adding a postal code stores the commune it resolves to', async () => {
+test('adding a town stores the point it geocodes to', async () => {
   const editor = createEditor();
-  const message = await editor.add_location({ country: 'FR', postal_code: '44000' });
+  const message = await editor.add_location({ place: 'Nantes' });
 
   assert.match(message.fr, /Lieu 1 « Nantes » ajouté/);
   assert.match(message.fr, /Découverte/, 'the user must be told where the device shows up');
   assert.equal(editor.state.config.locations.length, 1);
 
   const [location] = editor.state.config.locations;
-  assert.equal(location.city, 'Nantes');
-  assert.equal(location.postal_code, '44000');
-  assert.equal(location.country, 'FR');
   assert.equal(location.latitude, 47.2172);
-  assert.equal(location.address_label, 'Nantes (44000), Loire-Atlantique');
+  assert.equal(location.longitude, -1.5534);
+  assert.equal(location.address_label, 'Nantes, Loire-Atlantique, France');
+});
+
+test('a town on the other side of the planet is added like any other', async () => {
+  // The whole point of dropping the country registry: nothing here is French.
+  const editor = createEditor({ resolve: () => [TOKYO] });
+  const message = await editor.add_location({ place: 'Tokyo' });
+
+  assert.match(message.fr, /« Tokyo » ajouté/);
+  const [location] = editor.state.config.locations;
+  assert.equal(location.latitude, 35.6895);
+  assert.equal(location.address_label, 'Tokyo, Tokyo, Japon');
 });
 
 test('adding persists the list and re-publishes the devices', async () => {
   const editor = createEditor();
-  await editor.add_location({ postal_code: '44000' });
+  await editor.add_location({ place: 'Nantes' });
 
   assert.equal(editor.written.length, 1);
   assert.ok(Array.isArray(editor.written[0][LOCATIONS_KEY]));
   assert.equal(editor.republished, 1, 'without this the Discovery tab stays stale');
 });
 
-test('a name given by the user wins over the commune name', async () => {
+test('the geocoder is asked in the language of the device names', async () => {
   const editor = createEditor();
-  await editor.add_location({ name: 'Maison', postal_code: '44000' });
+  await editor.add_location({ place: 'Munich' });
+  assert.equal(editor.queries[0].language, 'fr');
+});
+
+test('a name given by the user wins over the name of the place', async () => {
+  const editor = createEditor();
+  await editor.add_location({ name: 'Maison', place: 'Nantes' });
   assert.equal(editor.state.config.locations[0].name, 'Maison');
 });
 
-test('an empty postal code asks for one instead of querying anything', async () => {
+test('an empty form asks for a town instead of querying anything', async () => {
   const editor = createEditor();
-  const message = await editor.add_location({ postal_code: '  ' });
+  const message = await editor.add_location({ place: '  ' });
 
-  assert.match(message.fr, /code postal/i);
-  assert.equal(editor.lookups.length, 0, 'an empty field must not cost a request');
+  assert.match(message.fr, /commune/i);
+  assert.equal(editor.queries.length, 0, 'an empty field must not cost a request');
   assert.equal(editor.state.config.locations.length, 0);
 });
 
-test('a malformed postal code is refused before the request, and says the shape', async () => {
-  const editor = createEditor();
-  const message = await editor.add_location({ postal_code: '440' });
+test('a town nobody knows says so and stores nothing', async () => {
+  const editor = createEditor({ resolve: () => [] });
+  const message = await editor.add_location({ place: 'Zzzz' });
 
-  assert.match(message.fr, /n'est pas un code postal/);
-  assert.match(message.fr, /44000/, 'the expected shape must be shown');
-  assert.equal(editor.lookups.length, 0);
-});
-
-test('an unknown country code falls back to the default instead of failing', async () => {
-  const editor = createEditor();
-  // Unreachable through the form, reachable through a hand-written config: the
-  // country select only offers registered codes.
-  const message = await editor.add_location({ country: 'ZZ', postal_code: '44000' });
-  // normalizeCountry falls back to the default, so this resolves normally —
-  // what matters is that nothing crashes and the location lands somewhere real.
-  assert.equal(editor.state.config.locations[0]?.country, 'FR');
-  assert.match(message.fr, /ajouté/);
-});
-
-test('an unknown postal code says so and stores nothing', async () => {
-  const editor = createEditor({ places: [] });
-  const message = await editor.add_location({ postal_code: '99999' });
-
-  assert.match(message.fr, /Aucune commune trouvée/);
+  assert.match(message.fr, /Aucun lieu trouvé/);
   assert.equal(editor.state.config.locations.length, 0);
 });
 
-test('a postal code covering several communes asks WHICH ONE, and lists them', async () => {
+test('a name several places share asks WHICH ONE, and lists them', async () => {
   // Picking the first would silently report another town's air.
   const editor = createEditor({
-    places: [
-      { ...NANTES, name: 'Châtillon-sur-Chalaronne', postal_code: '01400', context: 'Ain' },
-      { ...NANTES, name: 'Romans', postal_code: '01400', context: 'Ain' },
+    resolve: () => [
+      { ...NANTES, name: 'Paris', admin2: 'Paris' },
+      { ...NANTES, name: 'Paris', country: 'États-Unis', admin1: 'Texas', admin2: 'Lamar County' },
     ],
   });
-  const message = await editor.add_location({ postal_code: '01400' });
+  const message = await editor.add_location({ place: 'Paris' });
 
-  assert.match(message.fr, /couvre 2 communes/);
-  assert.match(message.fr, /Châtillon-sur-Chalaronne/);
-  assert.match(message.fr, /Romans/);
+  assert.match(message.fr, /Plusieurs lieux s'appellent/);
+  assert.match(message.fr, /Lamar County, États-Unis/);
   assert.equal(editor.state.config.locations.length, 0);
 });
 
 test('a long candidate list is truncated rather than flooding the message', async () => {
-  const places = Array.from({ length: MAX_LISTED_PLACES + 5 }, (_, index) => ({
+  const many = Array.from({ length: MAX_LISTED_CANDIDATES + 5 }, (_, index) => ({
     ...NANTES,
-    name: `Commune ${index}`,
+    admin2: `Zone ${index}`,
   }));
-  const editor = createEditor({ places });
-  const message = await editor.add_location({ postal_code: '44000' });
+  const editor = createEditor({ resolve: () => many });
+  const message = await editor.add_location({ place: 'Nantes' });
 
-  assert.match(message.fr, /\(\+5\)/);
+  assert.match(message.fr, /Zone 0/);
+  assert.ok(!/Zone 9/.test(message.fr), 'the list stops at MAX_LISTED_CANDIDATES');
 });
 
-test('naming the commune resolves an ambiguous postal code', async () => {
-  const editor = createEditor({
-    places: [
-      { ...NANTES, name: 'Châtillon-sur-Chalaronne', postal_code: '01400', context: 'Ain' },
-      { ...NANTES, name: 'Romans', postal_code: '01400', context: 'Ain' },
-    ],
+test('two coordinates win over the town, and are used as they are', async () => {
+  const editor = createEditor();
+  // A comma decimal separator is what a French keyboard produces.
+  const message = await editor.add_location({
+    place: 'Maison',
+    latitude: '48,8566',
+    longitude: '2,3522',
   });
-  const message = await editor.add_location({ postal_code: '01400', city: 'romans' });
 
   assert.match(message.fr, /ajouté/);
-  assert.equal(editor.state.config.locations[0].city, 'Romans');
+  assert.equal(editor.queries.length, 0, 'a typed point must not be geocoded');
+  const [location] = editor.state.config.locations;
+  assert.equal(location.latitude, 48.8566);
+  assert.equal(location.longitude, 2.3522);
+  assert.equal(location.address_label, 'Maison', 'the typed text stays as the label');
 });
 
-test('the commune is matched without accents, as nobody types them in a form', async () => {
-  const editor = createEditor({
-    places: [{ ...NANTES, name: 'Saint-Étienne', postal_code: '42000', context: 'Loire' }],
-  });
-  await editor.add_location({ postal_code: '42000', city: 'saint-etienne' });
-  assert.equal(editor.state.config.locations[0].city, 'Saint-Étienne');
-});
-
-test('an exact commune name wins over a longer one that starts the same', async () => {
-  const editor = createEditor({
-    places: [
-      { ...NANTES, name: 'Nantes' },
-      { ...NANTES, name: 'Nantes-en-Ratier' },
-    ],
-  });
-  await editor.add_location({ postal_code: '44000', city: 'Nantes' });
-  assert.equal(editor.state.config.locations[0].city, 'Nantes');
-});
-
-test('a commune the postal code does not cover lists the ones it does', async () => {
+test('a lone coordinate is refused rather than paired with a zero', async () => {
+  // Longitude 0 with a real latitude silently watches the Gulf of Guinea.
   const editor = createEditor();
-  const message = await editor.add_location({ postal_code: '44000', city: 'Rennes' });
+  const message = await editor.add_location({ place: 'Maison', latitude: '48.8566' });
 
-  assert.match(message.fr, /aucune commune nommée/);
-  assert.match(message.fr, /Nantes/);
+  assert.match(message.fr, /vont ensemble/);
   assert.equal(editor.state.config.locations.length, 0);
 });
 
-test('the same commune is not added twice, and the duplicate is named', async () => {
+test('an out-of-range coordinate is refused too', async () => {
   const editor = createEditor();
-  await editor.add_location({ name: 'Maison', postal_code: '44000' });
-  const message = await editor.add_location({ postal_code: '44000' });
+  const message = await editor.add_location({ latitude: '300', longitude: '2.3522' });
+  assert.match(message.fr, /-90/);
+  assert.equal(editor.state.config.locations.length, 0);
+});
+
+test('the same point is not watched twice, and the duplicate is named', async () => {
+  const editor = createEditor();
+  await editor.add_location({ name: 'Maison', place: 'Nantes' });
+  const message = await editor.add_location({ place: 'Nantes' });
 
   assert.match(message.fr, /déjà surveillé par le lieu 1 « Maison »/);
   assert.equal(editor.state.config.locations.length, 1);
@@ -210,7 +213,7 @@ test('the same commune is not added twice, and the duplicate is named', async ()
 
 test('a point no source covers is refused rather than published empty', async () => {
   const editor = createEditor({ isCovered: () => false });
-  const message = await editor.add_location({ postal_code: '44000' });
+  const message = await editor.add_location({ place: 'Nantes' });
 
   assert.match(message.fr, /Aucune source de qualité de l'air ne couvre/);
   assert.equal(editor.state.config.locations.length, 0);
@@ -220,30 +223,32 @@ test('the cap is enforced before anything is queried', async () => {
   const locations = Array.from({ length: MAX_LOCATIONS }, (_, index) => ({
     id: `loc-${index}`,
     name: `Lieu ${index}`,
-    country: 'FR',
-    postal_code: '44000',
-    city: `Commune ${index}`,
-    latitude: '47.2',
-    longitude: '-1.5',
+    latitude: String(40 + index),
+    longitude: '2.5',
   }));
   const editor = createEditor({ locations });
-  const message = await editor.add_location({ postal_code: '75001' });
+  const message = await editor.add_location({ place: 'Nantes' });
 
   assert.match(message.fr, new RegExp(`Maximum ${MAX_LOCATIONS}`));
-  assert.equal(editor.lookups.length, 0);
+  assert.equal(editor.queries.length, 0);
 });
 
 test('the listing numbers the locations the delete dropdown offers', async () => {
   const editor = createEditor();
-  await editor.add_location({ name: 'Maison', postal_code: '44000' });
-  await editor.add_location({ name: 'Bureau', postal_code: '44100' });
+  await editor.add_location({ name: 'Maison', place: 'Nantes' });
+  await editor.add_location({
+    name: 'Bureau',
+    place: 'Tokyo',
+    latitude: '35.6895',
+    longitude: '139.6917',
+  });
 
   const message = await editor.list_locations();
   assert.match(message.fr, /2\/20 lieu\(x\)/);
   // The name is bolded with Mathematical Alphanumeric Symbols (src/richText.js),
   // so the plain text to look for is the detail the line ends with.
-  assert.match(message.fr, /Nantes \(44000\)/);
-  assert.match(message.fr, /Nantes \(44100\)/);
+  assert.match(message.fr, /Nantes, Loire-Atlantique, France/);
+  assert.match(message.fr, /35\.6895/);
   assert.equal(message.fr.split('\n').length, 3, 'a header plus one line per location');
 });
 
@@ -255,7 +260,7 @@ test('an empty list points at the button that fills it', async () => {
 
 test('deleting asks for a confirmation, and changes nothing until it gets one', async () => {
   const editor = createEditor();
-  await editor.add_location({ name: 'Maison', postal_code: '44000' });
+  await editor.add_location({ name: 'Maison', place: 'Nantes' });
 
   const message = await editor.remove_location({ location: '1' });
   assert.match(message.fr, /Cochez « Je confirme »/);
@@ -265,7 +270,7 @@ test('deleting asks for a confirmation, and changes nothing until it gets one', 
 
 test('a confirmed deletion removes the location and re-publishes', async () => {
   const editor = createEditor();
-  await editor.add_location({ name: 'Maison', postal_code: '44000' });
+  await editor.add_location({ name: 'Maison', place: 'Nantes' });
   const before = editor.republished;
 
   const message = await editor.remove_location({ location: '1', confirmation: true });
@@ -276,9 +281,9 @@ test('a confirmed deletion removes the location and re-publishes', async () => {
 
 test('deleting a middle location warns that the numbers moved', async () => {
   const editor = createEditor();
-  await editor.add_location({ name: 'A', postal_code: '44000' });
-  await editor.add_location({ name: 'B', postal_code: '44100' });
-  await editor.add_location({ name: 'C', postal_code: '44200' });
+  await editor.add_location({ name: 'A', latitude: '47.1', longitude: '-1.5' });
+  await editor.add_location({ name: 'B', latitude: '47.2', longitude: '-1.5' });
+  await editor.add_location({ name: 'C', latitude: '47.3', longitude: '-1.5' });
 
   const message = await editor.remove_location({ location: '2', confirmation: true });
   assert.match(message.fr, /remontent d'un rang/);
@@ -286,7 +291,7 @@ test('deleting a middle location warns that the numbers moved', async () => {
 
 test('deleting the last location says nothing about renumbering', async () => {
   const editor = createEditor();
-  await editor.add_location({ name: 'A', postal_code: '44000' });
+  await editor.add_location({ name: 'A', place: 'Nantes' });
   const message = await editor.remove_location({ location: '1', confirmation: true });
   assert.ok(!/remontent/.test(message.fr));
 });
@@ -299,13 +304,13 @@ test('a location whose device exists says the device stays behind', async () => 
       state.config = normalizeConfig({ ...state.config, ...patch });
     },
     onLocationsChanged: async () => {},
-    lookupPlaces: async () => [NANTES],
+    resolvePlace: async () => ({ match: NANTES, candidates: [NANTES] }),
     // An integration cannot delete a Gladys device: the message must say so
     // rather than leave a sensor that never updates again.
     findCreatedDevice: async () => ({ name: "Qualité de l'air — Maison" }),
   }).actions;
 
-  await editor.add_location({ name: 'Maison', postal_code: '44000' });
+  await editor.add_location({ name: 'Maison', place: 'Nantes' });
   const message = await editor.remove_location({ location: '1', confirmation: true });
 
   assert.match(message.fr, /existe toujours dans Gladys/);
@@ -320,13 +325,13 @@ test('a device lookup failure does not block the deletion the user asked for', a
       state.config = normalizeConfig({ ...state.config, ...patch });
     },
     onLocationsChanged: async () => {},
-    lookupPlaces: async () => [NANTES],
+    resolvePlace: async () => ({ match: NANTES, candidates: [NANTES] }),
     findCreatedDevice: async () => {
       throw new Error('host unreachable');
     },
   }).actions;
 
-  await editor.add_location({ name: 'Maison', postal_code: '44000' });
+  await editor.add_location({ name: 'Maison', place: 'Nantes' });
   const message = await editor.remove_location({ location: '1', confirmation: true });
 
   assert.match(message.fr, /supprimé/);
@@ -335,11 +340,11 @@ test('a device lookup failure does not block the deletion the user asked for', a
 
 test('deleting a position that does not exist lists the ones that do', async () => {
   const editor = createEditor();
-  await editor.add_location({ name: 'Maison', postal_code: '44000' });
+  await editor.add_location({ name: 'Maison', place: 'Nantes' });
 
   const message = await editor.remove_location({ location: '7', confirmation: true });
   assert.match(message.fr, /Il n'y a pas de lieu 7/);
-  assert.match(message.fr, /Nantes \(44000\)/);
+  assert.match(message.fr, /Nantes, Loire-Atlantique/);
   assert.equal(editor.state.config.locations.length, 1);
 });
 
@@ -352,7 +357,7 @@ test('deleting from an empty list points at the button that fills it', async () 
 test('every action answers in both languages, never as a bare string', async () => {
   const editor = createEditor();
   const messages = [
-    await editor.add_location({ postal_code: '44000' }),
+    await editor.add_location({ place: 'Nantes' }),
     await editor.list_locations(),
     await editor.remove_location({ location: '1' }),
   ];

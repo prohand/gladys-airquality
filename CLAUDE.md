@@ -10,11 +10,12 @@ Gladys host over WebSocket + HTTP through `@gladysassistant/integration-sdk`. It
 is not a library and there is no local Gladys to run against — correctness is
 established by the unit tests and by the manifest/code consistency checks.
 
-It exposes the air quality index of user-chosen locations, configured by postal
-code. Data comes from two open, key-free APIs: Open-Meteo's air-quality endpoint
-(CAMS European data) for the concentrations, and `geo.api.gouv.fr` (API Géo) for
-turning a French postal code into a commune. See `README.md` for why Atmo France
-was set aside.
+It exposes the air quality index of user-chosen locations, **anywhere in the
+world**, configured by town name (or by a typed point). Data comes from two open,
+key-free APIs: Open-Meteo's air-quality endpoint (Copernicus CAMS, European model
+in Europe and global model elsewhere) for the concentrations, and Open-Meteo's
+geocoding endpoint (GeoNames) for turning a town name into a point. See
+`README.md` for why Atmo France was set aside.
 
 ## Commands
 
@@ -43,7 +44,10 @@ mislead you — the blueprint's `buildDevices`/`deviceExternalIds` map over
 
 A device's identity is `<type>:<location id>`, and the location id is generated
 once, when the user adds the location. Renaming a location keeps the device, its
-history and its place in rooms and scenes.
+history and its place in rooms and scenes. A location stores nothing but an id,
+a name, an address label and a point — `normalizeLocations()` rebuilds the label
+of the entries written by the France-only version, which stored a country, a
+postal code and a commune; that fallback is the migration, do not drop it.
 
 ### The location list is the single source of truth
 
@@ -74,8 +78,8 @@ names the device it leaves behind.
 ### Action messages are returned, never thrown
 
 The SDK acks a thrown handler error as a plain `error: e.message` string, which
-loses the multi-language message. Every expected, user-facing outcome — a
-malformed postal code, an ambiguous one, a location outside the coverage — is
+loses the multi-language message. Every expected, user-facing outcome — a town
+nobody knows, an ambiguous name, half a coordinate pair — is
 **returned** as an `{ en, fr }` object; only unexpected failures throw. That
 message is also the only thing the Configuration screen displays of what this
 integration has to say, hence the listing being an action too.
@@ -99,24 +103,33 @@ the devices already created, never their name. A language switch therefore
 applies to the devices still to be created, which the manifest description and
 `docs/` both say.
 
-### Two extension registries, kept separate on purpose
+### There is no country anywhere, and that is the design
 
-**`src/countries/`** — a country knows how to turn its national postal code into
-a point: `{ code, name, postalCodeExample, isValidPostalCode, lookupPostalCode }`.
-This is where a new country goes, and the ONLY place a country exists at all:
-everything downstream works on a latitude and a longitude. Adding one is a new
-module, one line in `COUNTRIES`, **and one option in the manifest `country`
-select** — that third step cannot be automated (a manifest `select` has static
-options) and `test/manifest.test.js` fails when it is forgotten.
+`src/geocoding.js` turns what the user typed into a point, through the Open-Meteo
+geocoding API (GeoNames), worldwide. A country registry used to live in
+`src/countries/` because a postal code is only readable by the country that
+issues it — it made the integration French while its data covers the planet, and
+it is gone. Do not reintroduce a country field, a country select or a per-country
+lookup: everything downstream works on a latitude and a longitude.
+
+Most place names are shared, so `resolvePlace()` returns candidates and the
+editor asks rather than picking; hints after a comma (`Montauban,
+Tarn-et-Garonne`) filter on region/department/country/postal code. The two
+coordinate fields are the way out when the geocoder does not know a place, and
+they win over the name when both are given.
 
 **`src/airQuality/`** — a provider knows how to read concentrations for a point:
 `{ key, name, pollutants, supports(point), fetchConcentrations(point) }`, first
-match wins, so callers never name an implementation. Order matters: a national
-source registered before `openMeteoProvider` overrides it for its own area.
+match wins, so callers never name an implementation. Two are registered, and the
+order IS the routing: `openMeteoEuropeProvider` (CAMS European, ~11 km, inside a
+bounding box) then `openMeteoGlobalProvider` (CAMS global, ~40 km, every point
+on Earth). A national source goes BEFORE both; nothing goes after the global one,
+which supports everything.
 
-A new country must fall inside some provider's coverage (today, the CAMS
-European bounding box), otherwise adding a location there is refused — on
-purpose.
+Each provider asks for its `domains` explicitly — never the API's `auto` blend —
+and the domain is part of the cache key: the two models are not coupled, and a
+location whose series switched between them would be two datasets under one
+chart.
 
 ### The index scale is the domain
 
@@ -125,14 +138,20 @@ European Air Quality Index bands (EEA), which are also the French ATMO bands
 since the arrêté du 10 juillet 2020. Read the file header before touching a
 number in it.
 
+They are applied WORLDWIDE, including to points the global model serves. That is
+deliberate — one scale means one number that means the same thing on every
+device — and it is stated in the manifest intro and both `docs/`: outside Europe
+this is not the local national index (US AQI, Chinese index, Indian CAQI).
+
 ### The manifest is a contract checked by tests
 
 `test/manifest.test.js` ties `gladys-assistant-integration.json` to the code:
 every action has a handler _and_ every handler has a button, `DEFAULT_CONFIG`
 matches the manifest defaults, the delete dropdown offers exactly
-`MAX_LOCATIONS` positions, the `country` select offers exactly `COUNTRIES`,
-`section` fields stay valueless, every label is bilingual. When you change one
-side, the test tells you about the other.
+`MAX_LOCATIONS` positions, `add_location` carries no country and no postal code
+field, its coordinates are `string` fields, `section` fields stay valueless,
+every label is bilingual. When you change one side, the test tells you about the
+other.
 
 Config/action field types: `string` (not `text`), `number`, `boolean`, `select`,
 `multi_select`, `secret`, `oauth2`, `section`.
@@ -185,18 +204,18 @@ discovery payload is validated by
   at class 1.
 - **Index thresholds are per pollutant** (`src/airQuality/scale.js`). 45 µg/m³ is
   "poor" for PM2.5 and "good" for ozone. Don't unify the bands.
-- **A postal code is never resolved by coin flip.** Several communes can share
-  one; the editor lists them and asks. Picking the first would silently report
-  another town's air.
-- **A GeoJSON `centre` is `[longitude, latitude]`**, unpacked once in
-  `src/countries/france.js`. Getting it backwards puts French communes in
-  Somalia; a test pins it.
+- **A place name is never resolved by coin flip.** Several places share most
+  names; the editor lists the candidates and asks. Picking the first would
+  silently report another town's air.
+- **Both coordinates or neither.** A lone latitude with a longitude defaulting to
+  0 silently watches the Gulf of Guinea.
 - **A location id is never reused and never derived from what the user can
   edit** — it becomes the device `external_id`, so a reused id would hand a
   deleted location's device history to the next one created.
-- **Provider coverage is checked before use** (`supports()`): outside the CAMS
-  European domain the point is refused when the location is added, and
-  `watchedLocations()` filters any stored one.
+- **Provider coverage is checked before use** (`supports()`): a point no provider
+  answers for is refused when the location is added, and `watchedLocations()`
+  filters any stored one. Since the global provider covers the planet, this now
+  only catches what is not a point (a coordinate out of range, or none).
 - **A refresh cycle never throws.** A rejection inside a timer callback would
   take the container down; one location failing must not silence the others.
 
@@ -209,6 +228,6 @@ cache, so tests that count requests must call `clearAirQualityCache()` in
 
 `test/helpers/fakeGladys.js` is the in-memory SDK stand-in; extend it when you
 use a new SDK method rather than mocking the SDK itself. The location editor
-takes its outside world by injection (`getConfig`, `setConfig`, `lookupPlaces`,
+takes its outside world by injection (`getConfig`, `setConfig`, `resolvePlace`,
 `isCovered`, `findCreatedDevice`), so `test/locationEditor.test.js` exercises the
 buttons with no Gladys and no network at all.

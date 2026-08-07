@@ -100,9 +100,9 @@ export function deviceExternalIds(gladys, location) {
  * The locations a device can be published for: a usable point, covered by an
  * air quality provider.
  *
- * Coverage is checked when the location is added, but a stored one can outlive
- * a provider's bounding box — and publishing a device the source answers
- * nothing for would leave a sensor stuck on "no recent value" forever.
+ * Coverage is checked when the location is added, but a stored one can carry a
+ * point no provider answers for — and publishing a device the source says
+ * nothing about would leave a sensor stuck on "no recent value" forever.
  * @param {{ locations: import('../locations.js').Location[] }} config
  */
 export function watchedLocations(config) {
@@ -194,15 +194,13 @@ export function buildDevice(gladys, location, language = DEFAULT_LANGUAGE) {
     // The analysis is hourly, so the integration drives its own refresh
     // instead; see startPolling below.
     //
-    // Keep the resolved commune and position on the device: useful when
-    // debugging a wrong town, and it survives a restart independently of the
+    // Keep the resolved place and position on the device: useful when debugging
+    // a wrong town, and it survives a restart independently of the
     // configuration.
     params: [
       { name: 'LOCATION_ID', value: location.id },
       { name: 'LOCATION_NAME', value: location.name },
-      { name: 'COUNTRY', value: location.country ?? '' },
-      { name: 'POSTAL_CODE', value: location.postal_code ?? '' },
-      { name: 'CITY', value: location.city ?? '' },
+      { name: 'ADDRESS_LABEL', value: location.address_label ?? '' },
       { name: 'LATITUDE', value: String(location.latitude) },
       { name: 'LONGITUDE', value: String(location.longitude) },
     ],

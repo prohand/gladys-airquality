@@ -8,11 +8,15 @@
 //     removed location disappears from Discovery);
 //   - it is stored in the integration configuration under the `locations` key.
 //
-// WHAT A LOCATION HOLDS. A country, a postal code and a commune — what the user
-// actually typed — plus the point they resolve to. The point is what every
-// query uses; the three others are kept so the listing can show where the
-// device looks without decoding two decimals, and so a future version can
-// re-resolve a location when a commune merges or a boundary moves.
+// WHAT A LOCATION HOLDS. A point — the only thing every query uses — plus an
+// address label, which is purely informational: where that point was geocoded
+// from, so the listing can show WHERE the device looks without the user having
+// to decode two decimals.
+//
+// There is deliberately no country, no postal code and no commune in there. A
+// location is a point anywhere on Earth (see src/geocoding.js), and the air
+// quality source is asked for coordinates; a location added by an older,
+// France-only version keeps its label and its point, and its device with them.
 //
 // WHERE THE LIST IS STORED, and why it is not a config_schema field.
 // The Configuration screen is generated from the manifest, which is a static
@@ -34,16 +38,12 @@
 // -----------------------------------------------------------------------------
 
 import { formatCoordinate, formatPoint, toCoordinate } from './coordinates.js';
-import { normalizeCountry } from './countries/index.js';
 import { boldLabel } from './richText.js';
 
 /**
  * @typedef {object} Location
  * @property {string} id stable, unique id (also the device platform id)
  * @property {string} name what the user calls this place
- * @property {string} country ISO 3166-1 alpha-2, one of COUNTRIES
- * @property {string} postal_code as the user typed it
- * @property {string} city the commune the postal code resolved to
  * @property {string} address_label where it is, in one line
  * @property {number|null} latitude
  * @property {number|null} longitude
@@ -87,23 +87,17 @@ export function newLocationId(existing = []) {
 }
 
 /**
- * Where a location is, in one line: "Nantes (44000), Loire-Atlantique".
- * Built here rather than stored raw so every entry reads the same way whether
- * it was added today or by an older version.
- * @param {{ city?: string, postal_code?: string, context?: string }} parts
- */
-export function buildAddressLabel({ city, postal_code: postalCode, context } = {}) {
-  const place = [city, postalCode ? `(${postalCode})` : ''].filter(Boolean).join(' ');
-  return [place, context].filter(Boolean).join(', ');
-}
-
-/**
  * One location, with its coordinates parsed into numbers.
  *
  * `latitude`/`longitude` are `null` when unusable — the location is kept in the
  * list rather than dropped (losing a location because a stored value was
  * malformed would be worse than showing it as unconfigured), and
  * `hasCoordinates` decides whether it can be published and queried.
+ *
+ * The `city`/`postal_code` fallbacks are the MIGRATION of the locations added
+ * when this integration only knew French postal codes: their label is rebuilt
+ * from what they stored, so an existing device keeps naming the commune it
+ * watches instead of showing a bare pair of decimals.
  * @param {object} raw
  * @param {string} fallbackId id to use when the stored entry has none
  * @returns {Location}
@@ -113,13 +107,12 @@ function normalizeLocation(raw, fallbackId) {
   const postalCode = String(raw?.postal_code ?? '').trim();
   return {
     id: String(raw?.id ?? fallbackId),
-    name: String(raw?.name ?? '').trim() || city || postalCode || 'Lieu',
-    country: normalizeCountry(raw?.country),
-    postal_code: postalCode,
-    city,
+    name: String(raw?.name ?? '').trim() || city || 'Lieu',
+    // Purely informational: where the point was geocoded from, so the user can
+    // see WHERE the device looks without decoding two decimals.
     address_label:
       String(raw?.address_label ?? '').trim() ||
-      buildAddressLabel({ city, postal_code: postalCode }),
+      [city, postalCode ? `(${postalCode})` : ''].filter(Boolean).join(' '),
     latitude: toCoordinate(raw?.latitude, 'latitude'),
     longitude: toCoordinate(raw?.longitude, 'longitude'),
   };
@@ -171,9 +164,6 @@ export function serializeLocations(locations = []) {
   return locations.map((location) => ({
     id: location.id,
     name: location.name,
-    country: location.country,
-    postal_code: location.postal_code ?? '',
-    city: location.city ?? '',
     address_label: location.address_label ?? '',
     latitude: location.latitude === null ? '' : formatCoordinate(location.latitude),
     longitude: location.longitude === null ? '' : formatCoordinate(location.longitude),
@@ -254,20 +244,23 @@ export function removeLocation(locations = [], id) {
 }
 
 /**
- * Whether a commune is already watched: same country, same postal code, same
- * commune. Adding it twice creates two devices reading the same grid cell of
- * the same forecast, which is never what the user meant.
+ * Whether a point is already watched. Adding it twice creates two devices
+ * reading the same grid cell of the same model, which is never what the user
+ * meant — and the check is on the POINT, not on the name, because the name is
+ * whatever the user typed while the point is what is actually queried.
+ *
+ * Compared at five decimals, about a metre: two geocodings of one town answer
+ * the very same coordinates, and nothing finer than a metre matters to a model
+ * whose grid cell is kilometres wide.
  * @param {Location[]} locations
- * @param {{ country: string, postal_code: string, city: string }} place
+ * @param {{ latitude: number, longitude: number }} point
  * @returns {Location | undefined}
  */
-export function findLocationAtPlace(locations = [], place) {
-  const wanted = String(place?.city ?? '').toLowerCase();
-  return locations.find(
+export function findLocationAtPoint(locations = [], point) {
+  return usableLocations(locations).find(
     (location) =>
-      location.country === place?.country &&
-      location.postal_code === String(place?.postal_code ?? '') &&
-      String(location.city ?? '').toLowerCase() === wanted,
+      location.latitude.toFixed(5) === Number(point?.latitude).toFixed(5) &&
+      location.longitude.toFixed(5) === Number(point?.longitude).toFixed(5),
   );
 }
 

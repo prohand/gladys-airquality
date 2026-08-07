@@ -2,7 +2,7 @@
 
 External integration for [Gladys Assistant](https://gladysassistant.com) that
 publishes the **air quality index** of the places you choose, one Gladys device
-per location, configured by **postal code**.
+per location, **anywhere in the world**: you type a town, you get a device.
 
 Built from the official
 [`integration-template-js`](https://github.com/GladysAssistant/integration-template-js)
@@ -11,9 +11,9 @@ starter, on the JavaScript SDK
 
 ## What you get
 
-Add a location from the Configuration screen (a country, a postal code), and a
-device shows up in the **Discovery** tab, ready to be added to Gladys. Each
-device exposes:
+Add a location from the Configuration screen (a town name, or a pair of
+coordinates), and a device shows up in the **Discovery** tab, ready to be added
+to Gladys. Each device exposes:
 
 | Feature                                   | Category                     | Value                                         |
 | ----------------------------------------- | ---------------------------- | --------------------------------------------- |
@@ -32,18 +32,39 @@ already carries them.
 
 Two open APIs, **no account and no API key** on either side.
 
+| Need               | Source                                                                                                                | Auth |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------- | ---- |
+| Concentrations     | [Copernicus CAMS](https://atmosphere.copernicus.eu/) via [Open-Meteo](https://open-meteo.com/en/docs/air-quality-api) | none |
+| Town → coordinates | [Open-Meteo geocoding API](https://open-meteo.com/en/docs/geocoding-api) (GeoNames)                                   | none |
+
 ### The air quality: Copernicus CAMS, via Open-Meteo
 
 [Atmo France](https://www.atmo-france.org/) is the reference for the French ATMO
 index, but its Atmo Data API requires an account and a token every user would
 have to create and paste before the integration works at all. So this
-integration reads the **CAMS European air quality data** instead — Copernicus
-Atmosphere Monitoring Service, the European Union's reference model, run by
-ECMWF on a ~11 km grid — republished as open data by
-[Open-Meteo](https://open-meteo.com/en/docs/air-quality-api). The numbers are
-official European ones and the setup is empty.
+integration reads the **CAMS data** instead — Copernicus Atmosphere Monitoring
+Service, the European Union's atmosphere service, run by ECMWF — republished as
+open data by [Open-Meteo](https://open-meteo.com/en/docs/air-quality-api). The
+numbers are official European ones and the setup is empty.
+
+CAMS is two models, and there is one provider per model
+([`src/airQuality/`](./src/airQuality/index.js)), registered Europe first:
+
+| Where the point is | Provider                 | Model         | Resolution |
+| ------------------ | ------------------------ | ------------- | ---------- |
+| In Europe          | `open-meteo-cams-europe` | CAMS European | ~11 km     |
+| Anywhere else      | `open-meteo-cams-global` | CAMS global   | ~40 km     |
+
+Both report the same five regulated pollutants, and each domain is asked for
+**explicitly** rather than through the API's `auto` blend: the two models are
+not coupled, so a location that silently switched between them would be two
+datasets under one chart.
 
 ### The index: the European AQI, which is also the French ATMO scale
+
+Applied worldwide, deliberately. Outside Europe it is therefore **not** the local
+national index — not the US AQI, not the Chinese one, not the Indian CAQI. One
+scale everywhere means one number that means the same thing in every device.
 
 The concentrations are graded by [`src/airQuality/scale.js`](./src/airQuality/scale.js)
 with the thresholds of the **European Air Quality Index** published by the
@@ -59,30 +80,26 @@ hour**, which is how the European index is computed. It therefore reacts within
 the hour — what a home automation scene wants — rather than reproducing the
 day's ATMO bulletin.
 
-### The postal codes: API Géo (geo.api.gouv.fr)
+### The town names: Open-Meteo geocoding (GeoNames)
 
-Postal codes are resolved through the
-[API Découpage administratif](https://geo.api.gouv.fr/decoupage-administratif/communes)
-of `geo.api.gouv.fr`, the official French administrative-boundaries API
-published by the DINUM on data.gouv.fr, built on the INSEE COG and IGN
-ADMIN-EXPRESS. Open data, no key.
+Town names are resolved by the
+[Open-Meteo geocoding API](https://open-meteo.com/en/docs/geocoding-api), backed
+by the GeoNames database — the same key-free house as the forecast, covering the
+whole world.
 
-A French postal code is a La Poste routing key, not an area: it can cover a
-dozen communes, and a commune can hold several codes. When a code is ambiguous
-the integration **lists the communes and asks which one you meant** — it never
-picks the first, because the wrong pick silently reports another town's air.
+There is **no country anywhere in the code**. There used to be a country
+registry, because a postal code is only readable by the country that issues it,
+and it made the integration French while its data covers the planet; a worldwide
+geocoder ([`src/geocoding.js`](./src/geocoding.js)) removed the step entirely —
+no country field in the form, no registry to extend, no manifest option list to
+keep in sync.
 
-## Adding another country
-
-The country is the ONLY place a country exists: everything downstream works on a
-latitude and a longitude. See [`src/countries/index.js`](./src/countries/index.js)
-for the three steps — a new module, one line in the registry, one option in the
-manifest `country` select. `test/manifest.test.js` fails if you forget the last
-one.
-
-The new country must also fall inside the coverage of an air quality provider
-(today, the CAMS European domain). A country outside it needs its own provider
-registered in [`src/airQuality/index.js`](./src/airQuality/index.js) too.
+Most place names are shared (several Montauban in France alone, a Paris in
+Texas), so the search returns a list: the integration **shows the candidates and
+asks which one you meant** — it never picks the first, because the wrong pick
+silently reports another town's air. The user narrows it down after a comma:
+`Montauban, Tarn-et-Garonne`, `Springfield, Illinois`, `Nantes, 44000`. A hamlet
+the geocoder does not know can still be added by its latitude and longitude.
 
 ## Project structure
 
@@ -92,11 +109,9 @@ registered in [`src/airQuality/index.js`](./src/airQuality/index.js) too.
 ├─ src/
 │  ├─ airQuality/
 │  │  ├─ index.js                    #   provider registry + read/grade
-│  │  ├─ openMeteo.js                #   CAMS Europe concentrations (no key)
+│  │  ├─ openMeteo.js                #   CAMS Europe + CAMS global (no key)
 │  │  └─ scale.js                    #   µg/m³ -> 1-6 index (EEA / ATMO bands)
-│  ├─ countries/
-│  │  ├─ index.js                    #   country registry ← add a country here
-│  │  └─ france.js                   #   postal code -> commune, via API Géo
+│  ├─ geocoding.js                   # town -> coordinates, worldwide (GeoNames)
 │  ├─ devices/
 │  │  ├─ index.js                    #   blueprint registry
 │  │  └─ airQualityStation.js        #   the device: features, states, refresh
