@@ -177,6 +177,24 @@ test('every label and description is written in both languages', () => {
   }
 });
 
+// The catalog card is a card: `name` and `description` are the title and the
+// one-liner under it, and the store schema bounds both. A description that
+// overflows is refused with "the integration manifest is invalid", at install
+// time, with nothing pointing at the field — the long explanation belongs to
+// the `intro` section, whose description allows 1000 characters.
+test('the catalog card text fits what the store schema accepts', () => {
+  assert.ok(
+    manifest.name.length >= 3 && manifest.name.length <= 30,
+    `name: ${manifest.name.length} characters, must be 3-30`,
+  );
+  for (const [language, text] of Object.entries(manifest.description)) {
+    assert.ok(
+      text.length >= 10 && text.length <= 100,
+      `description.${language}: ${text.length} characters, must be 10-100`,
+    );
+  }
+});
+
 test('every action declares a timeout long enough for its network calls', () => {
   for (const declared of manifest.actions ?? []) {
     assert.ok(
