@@ -3,8 +3,8 @@
 //
 // Role of this file: wire the SDK to the device registry (src/devices/) and to
 // the location manager (src/locationEditor.js). It holds NO air quality logic —
-// the Open-Meteo calls live in src/airQuality/, the postal code lookups in
-// src/countries/, the device definition in src/devices/airQualityStation.js,
+// the Open-Meteo calls live in src/airQuality/, the town lookups in
+// src/geocoding.js, the device definition in src/devices/airQualityStation.js,
 // the configured locations in src/locations.js. This file only:
 //   1. instantiates the SDK (connection, auth, reconnection: handled for you);
 //   2. registers the event handlers BEFORE connect();
@@ -142,8 +142,9 @@ const locationEditor = createLocationEditor({
     config = normalizeConfig({ ...config, ...patch });
   },
   onLocationsChanged: republish,
-  // Outside the CAMS European domain nothing answers for this point: better to
-  // refuse the location than to publish a device that never holds a value.
+  // A point no provider answers for is refused rather than published as a
+  // device that never holds a value. The global CAMS model covers the planet,
+  // so in practice this only catches a coordinate that is not one.
   isCovered: (point) => Boolean(findProvider(point)),
   // "Has the user already created this location's device?" — the one case the
   // delete action cannot clean up on its own, and must therefore name.

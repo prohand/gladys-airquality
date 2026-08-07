@@ -12,8 +12,10 @@
 // none of.
 //
 // So the language of the names is a configuration field, and its default is
-// FRENCH: the only country served today is France, and the vocabulary of the
-// index — bon, dégradé, très mauvais — is the one of the French ATMO bulletin.
+// FRENCH: the vocabulary of the index — bon, dégradé, très mauvais — is the one
+// of the French ATMO bulletin, and Gladys' own audience is largely French. The
+// locations themselves are worldwide (see src/geocoding.js), and this field is
+// also what the geocoder answers in: "Munich" or "München" for the same town.
 //
 // Note that Gladys renames nothing on re-publish: it upserts the params of the
 // devices already created, never their name. Changing the language therefore

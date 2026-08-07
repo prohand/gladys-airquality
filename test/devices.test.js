@@ -34,10 +34,7 @@ import { createFakeGladys } from './helpers/fakeGladys.js';
 const NANTES = {
   id: 'loc-11111111',
   name: 'Maison',
-  country: 'FR',
-  postal_code: '44000',
-  city: 'Nantes',
-  address_label: 'Nantes (44000), Loire-Atlantique',
+  address_label: 'Nantes, Loire-Atlantique, France',
   latitude: '47.2172',
   longitude: '-1.5534',
 };
@@ -46,6 +43,7 @@ const SYDNEY = {
   ...NANTES,
   id: 'loc-22222222',
   name: 'Antipodes',
+  address_label: 'Sydney, New South Wales, Australie',
   latitude: '-33.8688',
   longitude: '151.2093',
 };
@@ -66,13 +64,19 @@ test('one device is published per usable, covered location', () => {
   );
 });
 
-test('a location outside the covered domain is not published at all', () => {
-  // Better no device than a sensor stuck forever on "no recent value".
+test('a location outside Europe is published like any other', () => {
+  // The global CAMS model covers it, so there is nothing left to exclude.
   const config = configWith(NANTES, SYDNEY);
   assert.deepEqual(
     watchedLocations(config).map((location) => location.id),
-    [NANTES.id],
+    [NANTES.id, SYDNEY.id],
   );
+});
+
+test('a location whose stored point is not one is still not published', () => {
+  // Better no device than a sensor stuck forever on "no recent value".
+  const config = configWith({ ...NANTES, latitude: '300' });
+  assert.equal(watchedLocations(config).length, 0);
 });
 
 test('a location with unusable coordinates is not published either', () => {
@@ -171,16 +175,15 @@ test('PM2.5 and PM10 also get their concentration, in µg/m³', () => {
   );
 });
 
-test('the device carries the commune it was resolved from, for debugging', () => {
+test('the device carries the place it was resolved from, for debugging', () => {
   const gladys = createFakeGladys();
   const [device] = buildDiscoveredDevices(gladys, configWith(NANTES));
   const params = Object.fromEntries(device.params.map((p) => [p.name, p.value]));
 
   assert.equal(params.LOCATION_ID, NANTES.id);
-  assert.equal(params.POSTAL_CODE, '44000');
-  assert.equal(params.CITY, 'Nantes');
-  assert.equal(params.COUNTRY, 'FR');
+  assert.equal(params.ADDRESS_LABEL, 'Nantes, Loire-Atlantique, France');
   assert.equal(params.LATITUDE, '47.2172');
+  assert.equal(params.LONGITUDE, '-1.5534');
 });
 
 test('the feature names follow the configured language', () => {

@@ -1,8 +1,8 @@
 # Qualité de l'air
 
 Suivez l'indice de qualité de l'air des lieux de votre choix dans Gladys, avec
-un appareil par lieu. Vous ajoutez un lieu en indiquant simplement son **code
-postal**.
+un appareil par lieu. Vous ajoutez un lieu en saisissant simplement le nom de sa
+**commune**, **n'importe où dans le monde**.
 
 Aucun compte à créer, aucune clé d'API à saisir : les deux sources utilisées
 sont ouvertes et publiques.
@@ -11,33 +11,44 @@ sont ouvertes et publiques.
 
 1. Ouvrez l'écran **Configuration** de l'intégration.
 2. Dans la section « Vos lieux », cliquez sur **Ajouter un lieu**.
-3. Choisissez le **pays** (seule la France est disponible pour l'instant),
-   saisissez le **code postal**, et éventuellement un **nom** pour ce lieu
-   (« Maison », « Bureau »…). Sans nom, le lieu prend celui de la commune.
+3. Saisissez la **commune** — « Nantes », « Montréal », « Kyoto » — et
+   éventuellement un **nom** pour ce lieu (« Maison », « Bureau »…). Sans nom,
+   le lieu prend celui de la commune trouvée.
 4. La réponse s'affiche sous le bouton. Si tout va bien, elle confirme l'ajout
    et vous indique le numéro du lieu.
 5. Allez dans l'onglet **Découverte** : l'appareil « Qualité de l'air — _votre
    lieu_ » y attend d'être ajouté. Cliquez dessus pour le créer dans Gladys.
 
-### Un code postal, plusieurs communes
+### Un nom, plusieurs communes
 
-Un code postal français est une clé de tri de La Poste, pas une zone
-administrative : le code 01400 couvre par exemple une dizaine de communes.
-Quand c'est le cas, l'intégration ne choisit pas à votre place — elle vous
-répond la liste des communes concernées et vous demande de renseigner le champ
-**Commune** avec celle que vous voulez, puis de relancer l'action. Les accents
-et la casse n'ont pas d'importance : « saint-etienne » retrouve
+La plupart des noms de communes sont partagés : il y a plusieurs Montauban rien
+qu'en France, un Paris au Texas et un Springfield par État américain. Quand
+c'est le cas, l'intégration ne choisit pas à votre place — elle vous répond la
+liste des lieux trouvés et vous demande de préciser.
+
+Précisez **après une virgule** : la région, le département, l'État, le pays ou
+le code postal, dans n'importe quel ordre.
+
+- « Montauban, Tarn-et-Garonne »
+- « Springfield, Illinois »
+- « Nantes, 44000 »
+- « Paris, France »
+
+Les accents et la casse n'ont pas d'importance : « saint-etienne » retrouve
 « Saint-Étienne ».
 
-À l'inverse, une grande ville a souvent plusieurs codes postaux (Nantes a 44000,
-44100, 44200 et 44300). Ils désignent des quartiers différents : choisissez
-celui du vôtre.
+### Ou directement un point
+
+Si le géocodeur ne connaît pas votre hameau, ou si vous voulez un point précis
+lu sur une carte, renseignez plutôt la **latitude** et la **longitude** (degrés
+décimaux WGS-84). Les deux vont ensemble : une seule ne fait pas un point. Elles
+l'emportent alors sur la commune saisie, qui ne sert plus que de libellé.
 
 ## Voir vos lieux
 
 Le bouton **Afficher mes lieux** liste tout ce que l'intégration surveille :
-numéro, nom, commune, code postal, département et coordonnées. Une entrée par
-ligne, chacune commençant par « • ».
+numéro, nom, lieu (commune, région, pays) et coordonnées. Une entrée par ligne,
+chacune commençant par « • ».
 
 Ces **numéros sont ceux qu'utilise la suppression** : lancez cette action avant
 de supprimer un lieu pour être sûr du numéro.
@@ -100,10 +111,20 @@ pourrait déclencher une scène « l'air est redevenu bon ».
 
 ## D'où viennent les données
 
-**Les concentrations** proviennent des données européennes de qualité de l'air
-**CAMS** (Copernicus Atmosphere Monitoring Service, le modèle de référence de
-l'Union européenne, opéré par le CEPMMT sur une grille d'environ 11 km),
-rediffusées en open data par [Open-Meteo](https://open-meteo.com/en/docs/air-quality-api).
+**Les concentrations** proviennent des données **CAMS** (Copernicus Atmosphere
+Monitoring Service, le service atmosphérique de l'Union européenne, opéré par le
+CEPMMT), rediffusées en open data par
+[Open-Meteo](https://open-meteo.com/en/docs/air-quality-api). Deux modèles, et
+l'intégration choisit selon l'endroit :
+
+| Où est le lieu | Modèle lu     | Résolution |
+| -------------- | ------------- | ---------- |
+| En Europe      | CAMS européen | ~11 km     |
+| Ailleurs       | CAMS mondial  | ~40 km     |
+
+Les deux publient les cinq mêmes polluants réglementés. Un lieu reste toujours
+sur le même modèle : son historique est donc une seule série, pas deux jeux de
+données superposés.
 
 Le site [Atmo France](https://www.atmo-france.org/) est la référence pour
 l'indice ATMO français, mais son API demande un compte et un jeton
@@ -124,11 +145,10 @@ intégration lit l'**heure en cours**, comme le fait l'indice européen. La vale
 réagit donc dans l'heure — ce qu'on attend d'une scène domotique — plutôt que de
 reproduire le bulletin ATMO du jour.
 
-**Les codes postaux** sont résolus en communes via l'
-[API Découpage administratif](https://geo.api.gouv.fr/decoupage-administratif/communes)
-de `geo.api.gouv.fr`, l'API officielle française publiée par la DINUM sur
-data.gouv.fr, construite sur le COG de l'INSEE et la base ADMIN-EXPRESS de
-l'IGN.
+**Les communes** sont résolues en coordonnées par l'
+[API de géocodage Open-Meteo](https://open-meteo.com/en/docs/geocoding-api),
+adossée à la base **GeoNames**, qui couvre le monde entier. Ouverte, sans compte
+ni clé d'API elle non plus.
 
 ## Réglages
 
@@ -137,7 +157,8 @@ l'IGN.
   d'un appareil et de ses fonctionnalités est enregistré tel qu'il est publié :
   il faut donc le choisir ici. Un appareil déjà ajouté conserve les noms avec
   lesquels il a été créé ; supprimez-le et rajoutez-le depuis l'onglet
-  Découverte pour le renommer.
+  Découverte pour le renommer. Ce réglage est aussi la langue dans laquelle le
+  géocodeur répond : « Munich » ou « München » pour la même ville.
 - **Intervalle de rafraîchissement** — 1 heure par défaut (entre 15 minutes et
   24 heures). L'analyse CAMS est produite une fois par heure : descendre plus bas
   n'apporte rien.
@@ -154,9 +175,12 @@ rouge, avec la raison, si un lieu ne peut plus être lu.
 
 ## Limites
 
-- La couverture s'arrête aux limites du domaine européen CAMS. Un lieu situé en
-  dehors est refusé au moment de l'ajout, plutôt que de créer un appareil qui
-  n'aurait jamais de valeur.
+- **L'indice est l'indice européen, appliqué partout.** Hors d'Europe, ce n'est
+  donc pas l'indice national local : un lieu aux États-Unis, en Chine ou en Inde
+  est mesuré avec les seuils européens, pas avec l'US AQI, l'indice chinois ou le
+  CAQI indien. Les concentrations, elles, restent les concentrations.
+- Hors d'Europe, le modèle est **quatre fois plus grossier** (~40 km contre
+  ~11 km) : il décrit bien un fond régional, moins bien une rue.
 - Vingt lieux au maximum.
 - Un lieu n'est pas modifiable : pour changer de commune, supprimez-le et
   ajoutez-en un autre.

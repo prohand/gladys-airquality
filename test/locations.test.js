@@ -5,12 +5,10 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_COUNTRY } from '../src/countries/index.js';
 import {
-  buildAddressLabel,
   describeLocation,
   describeLocations,
-  findLocationAtPlace,
+  findLocationAtPoint,
   findLocationById,
   hasCoordinates,
   LOCATION_LINE_MARKER,
@@ -29,10 +27,7 @@ import {
 const NANTES = {
   id: 'loc-11111111',
   name: 'Maison',
-  country: 'FR',
-  postal_code: '44000',
-  city: 'Nantes',
-  address_label: 'Nantes (44000), Loire-Atlantique',
+  address_label: 'Nantes, Loire-Atlantique, France',
   latitude: '47.2172',
   longitude: '-1.5534',
 };
@@ -47,9 +42,29 @@ test('a stored location comes back with numeric coordinates', () => {
   const [location] = normalizeLocations([NANTES]);
   assert.equal(location.latitude, 47.2172);
   assert.equal(location.longitude, -1.5534);
-  assert.equal(location.city, 'Nantes');
-  assert.equal(location.country, 'FR');
+  assert.equal(location.address_label, 'Nantes, Loire-Atlantique, France');
   assert.ok(hasCoordinates(location));
+});
+
+test('a location stored by the France-only version keeps its point and its label', () => {
+  // Migration: those entries carry a commune and a postal code and no label.
+  // Dropping them would leave an existing device pointing at nothing.
+  const [location] = normalizeLocations([
+    {
+      id: 'loc-legacy01',
+      name: '',
+      country: 'FR',
+      postal_code: '44000',
+      city: 'Nantes',
+      latitude: '47.2172',
+      longitude: '-1.5534',
+    },
+  ]);
+  assert.equal(location.id, 'loc-legacy01', 'the id is the device external_id: it must survive');
+  assert.equal(location.name, 'Nantes', 'an unnamed one falls back to its commune');
+  assert.equal(location.address_label, 'Nantes (44000)');
+  assert.ok(hasCoordinates(location));
+  assert.equal(location.country, undefined, 'the country is not a location field any more');
 });
 
 test('the list survives a round trip through the stored shape', () => {
@@ -80,21 +95,15 @@ test('an out-of-range coordinate is refused like a malformed one', () => {
   assert.equal(location.latitude, null);
 });
 
-test('an unknown stored country falls back instead of breaking the location', () => {
-  const [location] = normalizeLocations([{ ...NANTES, country: 'ZZ' }]);
-  assert.equal(location.country, DEFAULT_COUNTRY);
-  assert.equal(location.postal_code, '44000', 'the postal code is still there to act on');
-});
-
 test('two entries sharing an id would fight over one device: one is dropped', () => {
   const locations = normalizeLocations([NANTES, { ...NANTES, name: 'Doublon' }]);
   assert.equal(locations.length, 1);
   assert.equal(locations[0].name, 'Maison');
 });
 
-test('a location with no name is named after its commune', () => {
+test('a location with no name at all still has one', () => {
   const [location] = normalizeLocations([{ ...NANTES, name: '' }]);
-  assert.equal(location.name, 'Nantes');
+  assert.equal(location.name, 'Lieu');
 });
 
 test('a fresh id is never one already in use', () => {
@@ -104,36 +113,25 @@ test('a fresh id is never one already in use', () => {
   assert.match(id, /^loc-/);
 });
 
-test('an address label reads "commune (code), area"', () => {
-  assert.equal(
-    buildAddressLabel({ city: 'Nantes', postal_code: '44000', context: 'Loire-Atlantique' }),
-    'Nantes (44000), Loire-Atlantique',
-  );
-  assert.equal(buildAddressLabel({ city: 'Nantes' }), 'Nantes');
-  assert.equal(buildAddressLabel({}), '');
-});
-
 test('adding keeps the list immutable and appends at the end', () => {
   const locations = normalizeLocations([NANTES]);
   const next = upsertLocation(locations, {
     id: 'loc-22222222',
     name: 'Bureau',
-    country: 'FR',
-    postal_code: '75001',
-    city: 'Paris',
-    latitude: 48.8566,
-    longitude: 2.3522,
+    address_label: 'Tokyo, Tokyo, Japon',
+    latitude: 35.6895,
+    longitude: 139.6917,
   });
   assert.equal(locations.length, 1, 'the original list must not be mutated');
   assert.equal(next.length, 2);
   assert.equal(positionOf(next, 'loc-22222222'), 2);
 });
 
-test('renaming a location does not blank the commune it was resolved from', () => {
+test('renaming a location does not blank the place it was resolved from', () => {
   const locations = normalizeLocations([NANTES]);
   const [renamed] = upsertLocation(locations, { id: NANTES.id, name: 'Chez moi' });
   assert.equal(renamed.name, 'Chez moi');
-  assert.equal(renamed.city, 'Nantes');
+  assert.equal(renamed.address_label, 'Nantes, Loire-Atlantique, France');
   assert.equal(renamed.latitude, 47.2172);
 });
 
@@ -146,14 +144,16 @@ test('a position designates a location, and an impossible one designates none', 
   assert.equal(positionOf(locations, 'nope'), 0);
 });
 
-test('the same commune is recognised whatever the case', () => {
+test('the same point is recognised whatever the name it was added under', () => {
   const locations = normalizeLocations([NANTES]);
+  assert.ok(findLocationAtPoint(locations, { latitude: 47.2172, longitude: -1.5534 }));
   assert.ok(
-    findLocationAtPlace(locations, { country: 'FR', postal_code: '44000', city: 'NANTES' }),
+    !findLocationAtPoint(locations, { latitude: 47.3, longitude: -1.5534 }),
+    'another point is another location',
   );
   assert.ok(
-    !findLocationAtPlace(locations, { country: 'FR', postal_code: '44100', city: 'Nantes' }),
-    'another postal code of the same city is another location',
+    !findLocationAtPoint(locations, {}),
+    'nothing is not a point, and must not match the first entry',
   );
 });
 
@@ -176,7 +176,7 @@ test('the listing opens every entry with the marker and its number', () => {
   for (const line of lines) {
     assert.ok(line.startsWith(LOCATION_LINE_MARKER), line);
   }
-  assert.match(lines[0], /Nantes \(44000\)/);
+  assert.match(lines[0], /Nantes, Loire-Atlantique, France \(47\.21720, -1\.55340\)/);
 });
 
 test('an empty list still says something', () => {

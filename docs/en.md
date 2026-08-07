@@ -1,7 +1,8 @@
 # Air quality
 
 Follow the air quality index of the places you choose in Gladys, with one device
-per location. You add a location by typing its **postal code**.
+per location. You add a location by typing the name of its **town**, **anywhere
+in the world**.
 
 No account to create, no API key to paste: both sources this integration uses
 are open and public.
@@ -10,31 +11,42 @@ are open and public.
 
 1. Open the integration's **Configuration** screen.
 2. In the "Your locations" section, click **Add a location**.
-3. Pick the **country** (only France is available for now), type the **postal
-   code**, and optionally a **name** for this location ("Home", "Office"…).
-   Without a name, the location takes the name of the commune.
+3. Type the **town** — "Nantes", "Montreal", "Kyoto" — and optionally a **name**
+   for this location ("Home", "Office"…). Without a name, the location takes the
+   name of the place found.
 4. The answer appears under the button. On success it confirms the addition and
    gives you the location's number.
 5. Go to the **Discovery** tab: the device "Qualité de l'air — _your location_"
    is waiting there to be added. Click it to create it in Gladys.
 
-### One postal code, several communes
+### One name, several places
 
-A French postal code is a La Poste routing key, not an administrative area:
-01400 for instance covers about a dozen communes. When that happens the
-integration does not choose for you — it answers with the list of communes and
-asks you to fill the **Commune** field with the one you want, then run the
-action again. Accents and case do not matter: "saint-etienne" finds
-"Saint-Étienne".
+Most town names are shared: there are several Montauban in France alone, a Paris
+in Texas and a Springfield per US state. When that happens the integration does
+not choose for you — it answers with the list of places found and asks you to be
+more precise.
 
-The other way round, a large city often has several postal codes (Nantes has
-44000, 44100, 44200 and 44300). They cover different districts: pick the one for
-yours.
+Narrow it down **after a comma**: the region, the department, the state, the
+country or the postal code, in any order.
+
+- "Montauban, Tarn-et-Garonne"
+- "Springfield, Illinois"
+- "Nantes, 44000"
+- "Paris, France"
+
+Accents and case do not matter: "saint-etienne" finds "Saint-Étienne".
+
+### Or a point, directly
+
+If the geocoder does not know your hamlet, or if you want a precise point read
+off a map, fill the **latitude** and the **longitude** instead (WGS-84 decimal
+degrees). Both go together: one alone is not a point. They then win over the
+town you typed, which is only kept as the label.
 
 ## Listing your locations
 
 The **Show my locations** button lists everything the integration watches:
-number, name, commune, postal code, area and coordinates. One entry per line,
+number, name, place (town, region, country) and coordinates. One entry per line,
 each opening with "•".
 
 Those **numbers are the ones the deletion uses**: run this action before
@@ -97,10 +109,20 @@ an "air is good again" scene.
 
 ## Where the data comes from
 
-**The concentrations** come from the **CAMS** European air quality data
-(Copernicus Atmosphere Monitoring Service, the European Union's reference model,
-run by ECMWF on a ~11 km grid), republished as open data by
-[Open-Meteo](https://open-meteo.com/en/docs/air-quality-api).
+**The concentrations** come from the **CAMS** data (Copernicus Atmosphere
+Monitoring Service, the European Union's atmosphere service, run by ECMWF),
+republished as open data by
+[Open-Meteo](https://open-meteo.com/en/docs/air-quality-api). Two models, and
+the integration picks by where the location is:
+
+| Where the location is | Model read    | Resolution |
+| --------------------- | ------------- | ---------- |
+| In Europe             | CAMS European | ~11 km     |
+| Anywhere else         | CAMS global   | ~40 km     |
+
+Both publish the same five regulated pollutants. A location always stays on the
+same model, so its history is a single series rather than two datasets stacked
+under one chart.
 
 [Atmo France](https://www.atmo-france.org/) is the reference for the French ATMO
 index, but its API requires an account and an authentication token that every
@@ -119,10 +141,10 @@ for particulates, daily maximum for the gases), while this integration reads the
 the hour — what a home automation scene wants — rather than reproducing the
 day's ATMO bulletin.
 
-**Postal codes** are resolved into communes through the
-[API Découpage administratif](https://geo.api.gouv.fr/decoupage-administratif/communes)
-of `geo.api.gouv.fr`, the official French API published by the DINUM on
-data.gouv.fr, built on the INSEE COG and the IGN ADMIN-EXPRESS database.
+**Towns** are resolved into coordinates by the
+[Open-Meteo geocoding API](https://open-meteo.com/en/docs/geocoding-api), backed
+by the worldwide **GeoNames** database. Open, and with no account and no API key
+either.
 
 ## Settings
 
@@ -130,7 +152,9 @@ data.gouv.fr, built on the INSEE COG and the IGN ADMIN-EXPRESS database.
   integration displays already follows your Gladys account language, but the
   name of a device and of its features is stored as it is published, so it has
   to be chosen here. A device already added keeps the names it was created with;
-  delete it and add it again from the Discovery tab to rename it.
+  delete it and add it again from the Discovery tab to rename it. This setting
+  is also the language the geocoder answers in: "Munich" or "München" for the
+  same city.
 - **Refresh interval** — 1 hour by default (between 15 minutes and 24 hours).
   The CAMS analysis is produced once an hour: going below that gains nothing.
 
@@ -145,9 +169,13 @@ turns red, with the reason, when a location can no longer be read.
 
 ## Limits
 
-- Coverage stops at the edge of the CAMS European domain. A location outside it
-  is refused when you add it, rather than creating a device that would never
-  hold a value.
+- **The index is the European one, applied everywhere.** Outside Europe it is
+  therefore not the local national index: a location in the United States, China
+  or India is graded with the European bands, not with the US AQI, the Chinese
+  index or the Indian CAQI. The concentrations themselves are still the
+  concentrations.
+- Outside Europe the model is **four times coarser** (~40 km against ~11 km): it
+  describes a regional background well, a street less so.
 - Twenty locations maximum.
 - A location cannot be edited: to watch another commune, remove it and add a new
   one.

@@ -1,16 +1,15 @@
 // -----------------------------------------------------------------------------
 // Consistency checks between `gladys-assistant-integration.json` and the code.
 // The manifest is validated by the store indexer, but nothing there can know
-// which handlers the code registers, how many positions the delete dropdown
-// must offer, nor which countries the registry supports — these tests keep them
-// in sync so a forgotten step fails CI, not the install.
+// which handlers the code registers nor how many positions the delete dropdown
+// must offer — these tests keep them in sync so a forgotten step fails CI, not
+// the install.
 // -----------------------------------------------------------------------------
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { DEFAULT_CONFIG, POLL_FREQUENCY_LIMITS } from '../src/config.js';
-import { COUNTRIES, DEFAULT_COUNTRY } from '../src/countries/index.js';
 import { DEVICE_BLUEPRINTS } from '../src/devices/index.js';
 import { DEFAULT_LANGUAGE, LANGUAGES } from '../src/language.js';
 import { createLocationEditor } from '../src/locationEditor.js';
@@ -104,15 +103,11 @@ test('the language select offers exactly the supported languages', () => {
   assert.equal(language.default, DEFAULT_LANGUAGE);
 });
 
-test('the country select offers exactly the registered countries', () => {
-  // The manifest is a static file: a country added to src/countries/ but not
-  // here is unreachable from the form, and vice versa.
-  const country = field('add_location', 'country');
-  assert.deepEqual(
-    country.options.map((option) => option.value),
-    COUNTRIES.map((c) => c.code),
-  );
-  assert.equal(country.default, DEFAULT_COUNTRY);
+test('nothing in the add form ties a location to one country', () => {
+  // The geocoder is worldwide: a country select would be a list of static
+  // options gating a search that needs none. Its absence is the feature.
+  assert.equal(field('add_location', 'country'), undefined);
+  assert.equal(field('add_location', 'postal_code'), undefined);
 });
 
 test('the location list is NOT a config_schema field', () => {
@@ -139,10 +134,20 @@ test('the deletion is guarded by a confirmation checkbox', () => {
   assert.equal(confirmation.default, false);
 });
 
-test('the postal code is the required input of the add action', () => {
-  assert.equal(field('add_location', 'postal_code').required, true);
-  assert.equal(field('add_location', 'city').required, false);
-  assert.equal(field('add_location', 'name').required, false);
+test('no field of the add action is required: a town OR a point is enough', () => {
+  // Marking the town required would forbid adding a point by its coordinates,
+  // which is the way out when the geocoder does not know a hamlet. The handler
+  // is what checks that one of the two ways in was used.
+  for (const key of ['name', 'place', 'latitude', 'longitude']) {
+    assert.equal(field('add_location', key).required, false, `${key} must stay optional`);
+  }
+});
+
+test('the coordinates are string fields, never number ones', () => {
+  // A `number` input is sanitized by the browser in its own locale: a French
+  // one silently drops "48.8566". See src/coordinates.js.
+  assert.equal(field('add_location', 'latitude').type, 'string');
+  assert.equal(field('add_location', 'longitude').type, 'string');
 });
 
 test('every field uses a widget type the store accepts', () => {

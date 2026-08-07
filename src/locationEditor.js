@@ -2,7 +2,7 @@
 // The location manager of the Configuration screen.
 //
 // WHAT THE USER SEES: three buttons and nothing else. Locations are added with
-// "Ajouter un lieu" (a country and a postal code), listed by "Afficher mes
+// "Ajouter un lieu" (a town, anywhere in the world), listed by "Afficher mes
 // lieux" and removed with "Supprimer un lieu". The Configuration screen holds
 // NO field about them.
 //
@@ -14,32 +14,42 @@
 // is the ONLY thing the screen shows of what an integration has to say — so the
 // listing is an action too.
 //
+// WHY THERE IS NO COUNTRY FIELD. There used to be one, because a postal code is
+// only readable by the country that issues it, and it made the whole
+// integration French while its data source covers the planet. A worldwide
+// geocoder (`src/geocoding.js`) takes a town name in any country instead, so
+// the country is not something the user has to pick nor something the code has
+// to know about.
+//
 // WHY A LOCATION IS NOT EDITABLE. Designating one entry of the list needs a
 // dropdown, and a `select` in a manifest has STATIC options: they can only ever
 // be POSITIONS, never the location names. Adding and deleting need no selection
-// at all, and they are enough: a location is a commune, and another commune is
+// at all, and they are enough: a location is a point, and a point that moved is
 // another location.
 //
 // WHY THE MESSAGES ARE RETURNED AND NEVER THROWN. The SDK acknowledges a thrown
 // handler error as a plain `error: e.message` string, which loses the
-// multi-language object. Every expected outcome — a malformed postal code, an
-// ambiguous one, a point outside the coverage — is RETURNED as `{ en, fr }`;
-// only unexpected failures throw.
+// multi-language object. Every expected outcome — a town nobody knows, an
+// ambiguous name, a pair of coordinates that is not a point — is RETURNED as
+// `{ en, fr }`; only unexpected failures throw.
 //
 // Everything the outside world provides is injected (`getConfig`, `setConfig`,
-// `lookupPlaces`, `isCovered`), so the whole set is testable without a Gladys
+// `resolvePlace`, `isCovered`), so the whole set is testable without a Gladys
 // server nor a network: see `test/locationEditor.test.js`.
 // -----------------------------------------------------------------------------
 
 import { createLogger } from '@gladysassistant/integration-sdk';
-import { formatPoint } from './coordinates.js';
-import { countryName, DEFAULT_COUNTRY, findCountry, normalizeCountry } from './countries/index.js';
-import { normalizeText } from './language.js';
+import { formatPoint, toCoordinate } from './coordinates.js';
 import {
-  buildAddressLabel,
+  describePlace,
+  MAX_LISTED_CANDIDATES,
+  placeContext,
+  resolvePlace as geocodePlace,
+} from './geocoding.js';
+import {
   describeLocation,
   describeLocations,
-  findLocationAtPlace,
+  findLocationAtPoint,
   findLocationById,
   LOCATION_LINE_MARKER,
   LOCATION_LINE_SEPARATOR,
@@ -55,23 +65,6 @@ import {
 
 const logger = createLogger({ name: 'locations' });
 
-/** How many communes a "be more precise" message lists before giving up. */
-export const MAX_LISTED_PLACES = 8;
-
-/**
- * The default way to turn a country code and a postal code into communes: ask
- * the country registry. Injected in tests so no request is ever made.
- * @param {string} countryCode
- * @param {string} postalCode
- */
-async function lookupThroughRegistry(countryCode, postalCode) {
-  const country = findCountry(countryCode);
-  if (!country) {
-    return [];
-  }
-  return country.lookupPostalCode(postalCode);
-}
-
 /**
  * Build the location manager.
  * @param {object} deps
@@ -84,7 +77,7 @@ async function lookupThroughRegistry(countryCode, postalCode) {
  *   the Gladys device a location has already been given, if any
  * @param {(point: object) => boolean} [deps.isCovered] whether an air quality
  *   provider has data for a point
- * @param {typeof lookupThroughRegistry} [deps.lookupPlaces] injected in tests
+ * @param {typeof geocodePlace} [deps.resolvePlace] injected in tests
  */
 export function createLocationEditor({
   getConfig,
@@ -92,7 +85,7 @@ export function createLocationEditor({
   onLocationsChanged,
   findCreatedDevice = async () => null,
   isCovered = () => true,
-  lookupPlaces = lookupThroughRegistry,
+  resolvePlace = geocodePlace,
 }) {
   /**
    * Persist a new list, then re-publish the devices on it.
@@ -103,81 +96,69 @@ export function createLocationEditor({
     await onLocationsChanged();
   }
 
-  /** One commune of a candidate list, as the messages print it. */
-  function describePlace(place) {
-    return place.context ? `${place.name} (${place.context})` : place.name;
-  }
-
-  /** The candidates, truncated: a message under a button is not a directory. */
-  function listPlaces(places) {
-    const shown = places.slice(0, MAX_LISTED_PLACES).map(describePlace).join(' | ');
-    return places.length > MAX_LISTED_PLACES
-      ? `${shown} | … (+${places.length - MAX_LISTED_PLACES})`
-      : shown;
+  /**
+   * The point typed by hand in the add form, when there is one.
+   *
+   * Both coordinates or neither: a lone latitude is not a point, and taking it
+   * with a longitude of 0 would silently watch the Gulf of Guinea. They are
+   * `string` fields — see src/coordinates.js for why — so `toCoordinate` is what
+   * parses them, comma included, and what rejects a latitude of 300.
+   * @param {object} fields
+   * @returns {{ point?: object, problem?: { en: string, fr: string } }} both
+   *   absent when the user typed no coordinate at all
+   */
+  function typedPoint(fields) {
+    const rawLatitude = String(fields.latitude ?? '').trim();
+    const rawLongitude = String(fields.longitude ?? '').trim();
+    if (rawLatitude === '' && rawLongitude === '') {
+      return {};
+    }
+    const latitude = toCoordinate(rawLatitude, 'latitude');
+    const longitude = toCoordinate(rawLongitude, 'longitude');
+    if (latitude === null || longitude === null) {
+      return {
+        problem: {
+          en: `Latitude and longitude go together, in WGS-84 decimal degrees (latitude -90 to 90, longitude -180 to 180): "48.8566" and "2.3522". Received "${rawLatitude}" and "${rawLongitude}".`,
+          fr: `La latitude et la longitude vont ensemble, en degrés décimaux WGS-84 (latitude de -90 à 90, longitude de -180 à 180) : « 48,8566 » et « 2,3522 ». Reçu « ${rawLatitude} » et « ${rawLongitude} ».`,
+        },
+      };
+    }
+    return { point: { latitude, longitude } };
   }
 
   /**
-   * Turn a country + postal code + optional commune into ONE commune, or say
-   * why it could not be one.
+   * Turn a place name into a point, or say why it could not be one.
    *
-   * A postal code is a routing key, not an area: several communes can share it.
-   * When they do, the user names the one they meant in the "Commune" field —
-   * nothing is picked by coin flip, since the wrong pick silently reports
-   * another town's air.
-   * @returns {Promise<{ place?: object, problem?: { en: string, fr: string } }>}
+   * Most names are shared — several Montauban in France alone, a Paris in Texas,
+   * a Springfield per state — so an ambiguous answer asks instead of picking:
+   * the wrong pick silently reports another town's air.
+   * @param {string} query
+   * @param {string} language the language the place names come back in
+   * @returns {Promise<{ point?: object, place?: object, problem?: object }>}
    */
-  async function resolvePlace(country, postalCode, wantedCity) {
-    const places = await lookupPlaces(country.code, postalCode);
-
-    if (places.length === 0) {
+  async function geocode(query, language) {
+    const { match, candidates } = await resolvePlace(query, language);
+    if (candidates.length === 0) {
       return {
         problem: {
-          en: `No commune found for postal code "${postalCode}" in ${countryName(country.code, 'en')}. Check the code.`,
-          fr: `Aucune commune trouvée pour le code postal « ${postalCode} » en ${countryName(country.code, 'fr')}. Vérifiez le code.`,
+          en: `No place found for "${query}". Check the spelling, or narrow it down with a comma: "Montauban, Tarn-et-Garonne", "Springfield, Illinois".`,
+          fr: `Aucun lieu trouvé pour « ${query} ». Vérifiez l'orthographe, ou précisez après une virgule : « Montauban, Tarn-et-Garonne », « Springfield, Illinois ».`,
         },
       };
     }
-
-    if (wantedCity === '') {
-      if (places.length === 1) {
-        return { place: places[0] };
-      }
-      // Several communes share this code: ask, and say which ones.
+    if (!match) {
+      const list = candidates.slice(0, MAX_LISTED_CANDIDATES).map(describePlace).join(' | ');
       return {
         problem: {
-          en: `Postal code ${postalCode} covers ${places.length} communes. Fill the "Commune" field with the one you want: ${listPlaces(places)}`,
-          fr: `Le code postal ${postalCode} couvre ${places.length} communes. Renseignez le champ « Commune » avec celle que vous voulez : ${listPlaces(places)}`,
+          en: `Several places are named "${query}". Add a comma and the region, the country or the postal code: ${list}`,
+          fr: `Plusieurs lieux s'appellent « ${query} ». Ajoutez une virgule puis la région, le pays ou le code postal : ${list}`,
         },
       };
     }
-
-    // Accent- and case-insensitive: nobody types "Saint-Étienne" with the
-    // accent in a form. An exact match wins over a prefix one, so "Nantes"
-    // never resolves to "Nantes-en-Ratier" when both are offered.
-    const wanted = normalizeText(wantedCity);
-    const exact = places.filter((place) => normalizeText(place.name) === wanted);
-    const matches =
-      exact.length > 0
-        ? exact
-        : places.filter((place) => normalizeText(place.name).startsWith(wanted));
-
-    if (matches.length === 0) {
-      return {
-        problem: {
-          en: `Postal code ${postalCode} covers no commune named "${wantedCity}". Available: ${listPlaces(places)}`,
-          fr: `Le code postal ${postalCode} ne couvre aucune commune nommée « ${wantedCity} ». Disponibles : ${listPlaces(places)}`,
-        },
-      };
-    }
-    if (matches.length > 1) {
-      return {
-        problem: {
-          en: `"${wantedCity}" matches ${matches.length} communes of postal code ${postalCode}. Type the full name: ${listPlaces(matches)}`,
-          fr: `« ${wantedCity} » correspond à ${matches.length} communes du code postal ${postalCode}. Saisissez le nom complet : ${listPlaces(matches)}`,
-        },
-      };
-    }
-    return { place: matches[0] };
+    return {
+      point: { latitude: match.latitude, longitude: match.longitude },
+      place: match,
+    };
   }
 
   /**
@@ -199,45 +180,33 @@ export function createLocationEditor({
     // --- Manifest actions ---------------------------------------------------
     actions: {
       /**
-       * Add a location, from a country and a postal code.
+       * Add a location, from a place name or straight from a point.
        *
-       * The postal code is the whole input: it is what the user knows by heart
-       * about the place they live in, and the country registry
-       * (`src/countries/`) is what turns it into the point everything
-       * downstream works on.
+       * The place name is the normal way in — nobody knows their town's
+       * coordinates by heart. The two coordinate fields are the way out of the
+       * cases the geocoder cannot serve: a hamlet it does not know, or a point
+       * read off a map. Given both, they WIN over the name, which is then only
+       * kept as the label of the location.
        */
       async add_location(fields = {}) {
-        const postalCode = String(fields.postal_code ?? '').trim();
-        const wantedCity = String(fields.city ?? '').trim();
-        const countryCode = normalizeCountry(fields.country ?? DEFAULT_COUNTRY);
+        const query = String(fields.place ?? '').trim();
         logger.info(
-          `Action add_location <- ${countryCode} / ${postalCode} / ${wantedCity || '(any commune)'}`,
+          `Action add_location <- ${fields.name ?? ''} / ${query} / ` +
+            `${fields.latitude ?? ''},${fields.longitude ?? ''}`,
         );
 
-        const country = findCountry(countryCode);
-        if (!country) {
-          // Unreachable through the form (the select only offers supported
-          // codes) but reachable through a hand-written config.
+        const typed = typedPoint(fields);
+        if (typed.problem) {
+          return typed.problem;
+        }
+        if (!typed.point && query === '') {
           return {
-            en: `Country "${fields.country}" is not supported yet.`,
-            fr: `Le pays « ${fields.country} » n'est pas encore pris en charge.`,
+            en: 'Type the town of the location to add, anywhere in the world, or its latitude and its longitude.',
+            fr: "Saisissez la commune du lieu à ajouter, n'importe où dans le monde, ou sa latitude et sa longitude.",
           };
         }
 
-        if (postalCode === '') {
-          return {
-            en: `Type the postal code of the location to add, e.g. "${country.postalCodeExample}".`,
-            fr: `Saisissez le code postal du lieu à ajouter, par exemple « ${country.postalCodeExample} ».`,
-          };
-        }
-        if (!country.isValidPostalCode(postalCode)) {
-          return {
-            en: `"${postalCode}" is not a valid ${countryName(country.code, 'en')} postal code. Expected something like "${country.postalCodeExample}".`,
-            fr: `« ${postalCode} » n'est pas un code postal ${countryName(country.code, 'fr')} valide. Attendu quelque chose comme « ${country.postalCodeExample} ».`,
-          };
-        }
-
-        const { locations } = getConfig();
+        const { locations, language } = getConfig();
         if (locations.length >= MAX_LOCATIONS) {
           return {
             en: `Maximum ${MAX_LOCATIONS} locations. Delete one first.`,
@@ -245,51 +214,50 @@ export function createLocationEditor({
           };
         }
 
-        const { place, problem } = await resolvePlace(country, postalCode, wantedCity);
-        if (problem) {
-          return problem;
+        // A typed point is used as it is: the user gave the answer the geocoder
+        // would only have guessed at.
+        const geocoded = typed.point ? null : await geocode(query, language);
+        if (geocoded?.problem) {
+          return geocoded.problem;
         }
+        const point = typed.point ?? geocoded.point;
 
-        // Refused HERE rather than published as a device that never holds a
-        // value: outside the covered domain the forecast has nothing to say,
-        // so the device would sit forever on "no recent value".
-        if (!isCovered(place)) {
+        // The global model covers the planet, so this only ever refuses what is
+        // not a point at all — but it is checked HERE rather than published as a
+        // device that never holds a value.
+        if (!isCovered(point)) {
           return {
-            en: `No air quality source covers ${place.name} (${formatPoint(place)}): readings stop at the edge of the CAMS European domain. This location was not added.`,
-            fr: `Aucune source de qualité de l'air ne couvre ${place.name} (${formatPoint(place)}) : les mesures s'arrêtent aux limites du domaine européen CAMS. Ce lieu n'a pas été ajouté.`,
+            en: `No air quality source covers ${formatPoint(point)}. This location was not added.`,
+            fr: `Aucune source de qualité de l'air ne couvre ${formatPoint(point)}. Ce lieu n'a pas été ajouté.`,
           };
         }
 
-        const candidate = {
-          country: country.code,
-          postal_code: place.postal_code,
-          city: place.name,
-        };
-        const duplicate = findLocationAtPlace(locations, candidate);
+        // The forecast is read on a grid cell kilometres wide: two devices on
+        // the same point would report the same numbers under two names.
+        const duplicate = findLocationAtPoint(locations, point);
         if (duplicate) {
           return {
-            en: `${place.name} (${place.postal_code}) is already watched by location ${positionOf(locations, duplicate.id)} "${duplicate.name}".`,
-            fr: `${place.name} (${place.postal_code}) est déjà surveillé par le lieu ${positionOf(locations, duplicate.id)} « ${duplicate.name} ».`,
+            en: `That point is already watched by location ${positionOf(locations, duplicate.id)} "${duplicate.name}".`,
+            fr: `Ce point est déjà surveillé par le lieu ${positionOf(locations, duplicate.id)} « ${duplicate.name} ».`,
           };
         }
 
-        // A location the user did not name is named after its commune —
-        // "Qualité de l'air — Nantes" beats two decimals.
-        const name = String(fields.name ?? '').trim() || place.name;
+        // A location the user did not name is named after the place it is in —
+        // "Qualité de l'air — Montauban" beats two decimals. A typed point with
+        // no name at all falls back to its coordinates.
+        const name =
+          String(fields.name ?? '').trim() || geocoded?.place?.name || query || formatPoint(point);
+        // What the listing shows after the name: where the point actually is.
+        // A geocoded place carries its region and country; a typed point keeps
+        // whatever the user wrote in the place field, and nothing when they
+        // wrote nothing (the geocoder has no reverse endpoint to ask).
+        const addressLabel = geocoded?.place
+          ? [geocoded.place.name, placeContext(geocoded.place)].filter(Boolean).join(', ')
+          : query;
+
         const id = newLocationId(locations);
         await commit(
-          upsertLocation(locations, {
-            id,
-            name,
-            ...candidate,
-            address_label: buildAddressLabel({
-              city: place.name,
-              postal_code: place.postal_code,
-              context: place.context,
-            }),
-            latitude: place.latitude,
-            longitude: place.longitude,
-          }),
+          upsertLocation(locations, { id, name, address_label: addressLabel, ...point }),
         );
 
         const saved = findLocationById(getConfig().locations, id);
@@ -318,8 +286,8 @@ export function createLocationEditor({
         }
         const listing = describeLocations(locations);
         return {
-          en: `${locations.length}/${MAX_LOCATIONS} location(s), as "${LOCATION_LINE_MARKER}number. name — commune (postal code), area (latitude, longitude)":${LOCATION_LINE_SEPARATOR}${listing}`,
-          fr: `${locations.length}/${MAX_LOCATIONS} lieu(x), au format « ${LOCATION_LINE_MARKER}numéro. nom — commune (code postal), zone (latitude, longitude) » :${LOCATION_LINE_SEPARATOR}${listing}`,
+          en: `${locations.length}/${MAX_LOCATIONS} location(s), as "${LOCATION_LINE_MARKER}number. name — place (latitude, longitude)":${LOCATION_LINE_SEPARATOR}${listing}`,
+          fr: `${locations.length}/${MAX_LOCATIONS} lieu(x), au format « ${LOCATION_LINE_MARKER}numéro. nom — lieu (latitude, longitude) » :${LOCATION_LINE_SEPARATOR}${listing}`,
         };
       },
 
