@@ -86,6 +86,23 @@ test('a pollutant the answer omits stays null instead of becoming 0', async () =
   assert.equal(measuredAt, '2026-08-06T12:00');
 });
 
+test('the reading carries the hour of the data and the zone it is written in', async () => {
+  stubFetch({
+    timezone_abbreviation: 'CEST',
+    current: { time: '2026-08-06T12:00', pm10: 18 },
+  });
+  const reading = await openMeteoEuropeProvider.fetchConcentrations(NANTES);
+
+  assert.equal(reading.measuredAt, '2026-08-06T12:00');
+  assert.equal(reading.timeZone, 'CEST');
+});
+
+test('a source that names no timezone still reads', async () => {
+  stubFetch({ current: { time: '2026-08-06T12:00', pm10: 18 } });
+  const reading = await openMeteoEuropeProvider.fetchConcentrations(NANTES);
+  assert.equal(reading.timeZone, null);
+});
+
 test('an HTTP failure is propagated, not swallowed into empty data', async () => {
   stubFetch({}, { ok: false, status: 503 });
   await assert.rejects(() => openMeteoEuropeProvider.fetchConcentrations(NANTES), /503/);

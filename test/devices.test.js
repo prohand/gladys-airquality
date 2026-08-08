@@ -210,6 +210,8 @@ test('a reading becomes one state per feature that has a value', () => {
       ozone: INDEX_LEVELS.VERY_POOR,
     },
     overall: { level: INDEX_LEVELS.VERY_POOR, pollutant: 'ozone' },
+    measuredAt: '2026-08-06T12:00',
+    timeZone: 'CEST',
   };
 
   const states = buildStates(ids, reading, 'fr');
@@ -223,6 +225,69 @@ test('a reading becomes one state per feature that has a value', () => {
   assert.equal(byId[subIndexFeatureId(ids, 'pm10')], INDEX_LEVELS.MODERATE);
   assert.equal(byId[concentrationFeatureId(ids, 'pm2_5')], 5);
   assert.equal(byId[concentrationFeatureId(ids, 'pm10')], 45);
+  assert.equal(byId[ids.feature(FEATURE.MEASURED_AT)], '06/08/2026 à 12:00 CEST');
+});
+
+test('the reading time is published on the device, in the reader language', () => {
+  // It belongs on each device rather than on one global one: it is the hour of
+  // the model run over THAT point, in the local time of THAT point, so two
+  // locations can legitimately disagree.
+  const gladys = createFakeGladys();
+  const ids = gladys.externalIds(DEVICE_TYPE, NANTES.id);
+  const reading = {
+    concentrations: { pm10: 45 },
+    subIndexes: { pm10: INDEX_LEVELS.MODERATE },
+    overall: { level: INDEX_LEVELS.MODERATE, pollutant: 'pm10' },
+    measuredAt: '2026-08-06T12:00',
+    timeZone: 'CEST',
+  };
+
+  const measuredAt = (language) =>
+    buildStates(ids, reading, language).find(
+      (s) => s.device_feature_external_id === ids.feature(FEATURE.MEASURED_AT),
+    )?.text;
+
+  assert.equal(measuredAt('fr'), '06/08/2026 à 12:00 CEST');
+  assert.equal(measuredAt('en'), '2026-08-06 12:00 CEST');
+});
+
+test('a reading with no timestamp publishes its values and no date', () => {
+  const gladys = createFakeGladys();
+  const ids = gladys.externalIds(DEVICE_TYPE, NANTES.id);
+  const states = buildStates(
+    ids,
+    {
+      concentrations: { pm10: 45 },
+      subIndexes: { pm10: INDEX_LEVELS.MODERATE },
+      overall: { level: INDEX_LEVELS.MODERATE, pollutant: 'pm10' },
+      measuredAt: null,
+      timeZone: null,
+    },
+    'fr',
+  );
+
+  assert.ok(states.some((s) => s.device_feature_external_id === subIndexFeatureId(ids, 'pm10')));
+  assert.ok(!states.some((s) => s.device_feature_external_id === ids.feature(FEATURE.MEASURED_AT)));
+});
+
+test('a timestamp with nothing measured dates nothing', () => {
+  // "Updated at 12:00" next to a device holding no value would date a
+  // measurement that was never made.
+  const gladys = createFakeGladys();
+  const ids = gladys.externalIds(DEVICE_TYPE, NANTES.id);
+  const states = buildStates(
+    ids,
+    {
+      concentrations: {},
+      subIndexes: {},
+      overall: { level: null, pollutant: null },
+      measuredAt: '2026-08-06T12:00',
+      timeZone: 'CEST',
+    },
+    'fr',
+  );
+
+  assert.deepEqual(states, []);
 });
 
 test('a pollutant with no value publishes NOTHING, never a 1', () => {

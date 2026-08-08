@@ -106,6 +106,7 @@ Each device exposes:
 | **Dominant pollutant**                      | the pollutant that set the index                      |
 | **PM2.5 / PM10 / NO₂ / O₃ / SO₂ sub-index** | 1 to 6, pollutant by pollutant                        |
 | **PM2.5** and **PM10**                      | the concentration, in µg/m³                           |
+| **Last data update**                        | the hour of the data, in the local time of the place  |
 
 The six classes of the index:
 
@@ -125,6 +126,12 @@ enough to degrade the air.
 Only PM2.5 and PM10 also get a concentration feature: they are the only
 pollutants Gladys has a dedicated category for. NO₂, O₃ and SO₂ are carried by
 their sub-index.
+
+The **last data update** is the hour of the CAMS analysis for that place, not
+the hour the integration last ran: the model runs hourly, so refreshing more
+often does not move it. It is shown in the **local time of the place** (followed
+by its zone, `CEST`, `GMT+9`…), which is why every device carries its own: two
+locations can legitimately show two different hours.
 
 A pollutant the source has **no value** for publishes nothing at all. A missing
 measurement is not clean air: writing 1 would corrupt the history and could fire

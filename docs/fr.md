@@ -110,6 +110,7 @@ Chaque appareil expose :
 | **Polluant dominant**                         | le polluant qui a déterminé l'indice                            |
 | **Sous-indice PM2,5 / PM10 / NO₂ / O₃ / SO₂** | de 1 à 6, polluant par polluant                                 |
 | **PM2,5** et **PM10**                         | la concentration, en µg/m³                                      |
+| **Dernière mise à jour des données**          | l'heure de la donnée, en heure locale du lieu                   |
 
 Les six classes de l'indice :
 
@@ -129,6 +130,13 @@ suffit à dégrader l'air.
 Seuls PM2,5 et PM10 ont en plus une fonctionnalité de concentration : ce sont
 les seuls polluants pour lesquels Gladys dispose d'une catégorie dédiée. Le
 NO₂, l'O₃ et le SO₂ sont portés par leur sous-indice.
+
+La **dernière mise à jour des données** est l'heure de l'analyse CAMS pour ce
+lieu, pas celle du dernier passage de l'intégration : le modèle tourne toutes
+les heures, donc rafraîchir plus souvent ne change pas cette heure. Elle est
+affichée en **heure locale du lieu** (suivie de son fuseau, `CEST`, `GMT+9`…),
+et c'est pourquoi elle est portée par chaque appareil : deux lieux peuvent
+légitimement afficher deux heures différentes.
 
 Un polluant pour lequel la source n'a **aucune valeur** ne publie rien du tout.
 Une mesure absente n'est pas un air pur : écrire 1 fausserait l'historique et
