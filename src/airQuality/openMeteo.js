@@ -121,9 +121,16 @@ function createOpenMeteoProvider({ key, name, domain, supports }) {
     /**
      * Read the current pollutant concentrations of a point.
      * @param {{ latitude: number, longitude: number }} point
-     * @returns {Promise<{ concentrations: Record<string, number|null>, measuredAt: string|null }>}
+     * @returns {Promise<{
+     *   concentrations: Record<string, number|null>,
+     *   measuredAt: string|null,
+     *   timeZone: string|null,
+     * }>}
      *   concentrations in µg/m³, keyed by pollutant; a pollutant with no value is
-     *   null (the caller turns that into "no state published").
+     *   null (the caller turns that into "no state published"). `measuredAt` is
+     *   the hour the model stamped the reading with, in the LOCAL time of the
+     *   point (`timezone=auto` below), and `timeZone` the abbreviation that
+     *   makes it readable from anywhere.
      */
     async fetchConcentrations({ latitude, longitude }) {
       // The domain is part of the key: the same point read on two models is two
@@ -172,7 +179,14 @@ function createOpenMeteoProvider({ key, name, domain, supports }) {
         concentrations[pollutant] = raw === null || raw === undefined ? null : Number(raw);
       }
 
-      const value = { concentrations, measuredAt: current.time ?? null };
+      // The hour of the CAMS analysis, in the local time of the point — the
+      // answer to "how fresh is this?", which the refresh interval alone does
+      // not give: the model runs hourly and we may be reading a cached body.
+      const value = {
+        concentrations,
+        measuredAt: current.time ?? null,
+        timeZone: body?.timezone_abbreviation ?? null,
+      };
       cache.set(cacheKey, { at: Date.now(), value });
       return value;
     },

@@ -19,7 +19,12 @@
 //   - the raw PM2.5 and PM10 CONCENTRATIONS in µg/m³. Only those two, because
 //     they are the only pollutants Gladys has a dedicated feature category for;
 //     NO₂, O₃ and SO₂ would have to be published as "unknown", which is worse
-//     than the sub-index that already carries them.
+//     than the sub-index that already carries them;
+//   - the hour the data itself was produced, as text. It belongs HERE, on every
+//     device, rather than on one integration-wide device: it is the hour of the
+//     model run over THAT point, in the local time of THAT point, so two
+//     locations can legitimately disagree — and a global "last refresh" would
+//     say the timer fired, not that this location got a fresh number.
 //
 // The identity of a device is `<type>:<location id>`, and the location id is
 // generated once when the user adds the location: renaming a location keeps the
@@ -40,6 +45,7 @@ import {
   INDEX_MIN,
   pollutantName,
 } from '../airQuality/scale.js';
+import { formatMeasuredAt } from '../datetime.js';
 import { DEFAULT_LANGUAGE, inLanguage } from '../language.js';
 import {
   describeLocation,
@@ -63,6 +69,7 @@ export const FEATURE = {
   INDEX: 'index',
   INDEX_TEXT: 'index-text',
   DOMINANT_POLLUTANT: 'dominant-pollutant',
+  MEASURED_AT: 'measured-at',
 };
 
 /** Suffix of the per-pollutant features, so the two never share an id. */
@@ -80,6 +87,7 @@ const FEATURE_NAMES = {
   [FEATURE.INDEX]: { en: 'Air quality index', fr: "Indice de qualité de l'air" },
   [FEATURE.INDEX_TEXT]: { en: 'Air quality (text)', fr: "Qualité de l'air (texte)" },
   [FEATURE.DOMINANT_POLLUTANT]: { en: 'Dominant pollutant', fr: 'Polluant dominant' },
+  [FEATURE.MEASURED_AT]: { en: 'Last data update', fr: 'Dernière mise à jour des données' },
 };
 
 /** How the name of a pollutant becomes the name of its sub-index feature. */
@@ -209,6 +217,7 @@ export function buildDevice(gladys, location, language = DEFAULT_LANGUAGE) {
       indexFeature(ids.feature(FEATURE.INDEX), featureName(FEATURE.INDEX)),
       textFeature(ids.feature(FEATURE.INDEX_TEXT), featureName(FEATURE.INDEX_TEXT)),
       textFeature(ids.feature(FEATURE.DOMINANT_POLLUTANT), featureName(FEATURE.DOMINANT_POLLUTANT)),
+      textFeature(ids.feature(FEATURE.MEASURED_AT), featureName(FEATURE.MEASURED_AT)),
       ...allPollutants().map((pollutant) =>
         indexFeature(
           subIndexFeatureId(ids, pollutant),
@@ -234,7 +243,7 @@ export function buildDevice(gladys, location, language = DEFAULT_LANGUAGE) {
  * Split out of `poll()` so the mapping "reading -> states" is testable without
  * a Gladys connection.
  *
- * The two TEXT states are written in the same language as the features that
+ * The TEXT states are written in the same language as the features that
  * carry them: a stored state is a string like a feature name, translated by
  * nobody downstream.
  * @param {string} [language] one of LANGUAGES (see src/language.js)
@@ -282,6 +291,19 @@ export function buildStates(ids, reading, language = DEFAULT_LANGUAGE) {
           : inLanguage(NO_DOMINANT_POLLUTANT, language),
       },
     );
+  }
+
+  // The freshness of the numbers above, published only when there ARE numbers
+  // above: "updated at 12:00" next to a device holding nothing would date a
+  // measurement that was never made.
+  if (states.length > 0) {
+    const measuredAt = formatMeasuredAt(reading.measuredAt, language, reading.timeZone);
+    if (measuredAt) {
+      states.push({
+        device_feature_external_id: ids.feature(FEATURE.MEASURED_AT),
+        text: measuredAt,
+      });
+    }
   }
 
   return states;

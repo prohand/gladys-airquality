@@ -58,6 +58,7 @@ export function allPollutants() {
  *   subIndexes: Record<string, number|null>,
  *   overall: { level: number|null, pollutant: string|null },
  *   measuredAt: string|null,
+ *   timeZone: string|null,
  * }>}
  */
 export async function readAirQuality(point) {
@@ -71,7 +72,7 @@ export async function readAirQuality(point) {
     );
   }
 
-  const { concentrations, measuredAt } = await provider.fetchConcentrations(point);
+  const { concentrations, measuredAt, timeZone } = await provider.fetchConcentrations(point);
 
   const subIndexes = {};
   for (const [pollutant, concentration] of Object.entries(concentrations)) {
@@ -84,5 +85,6 @@ export async function readAirQuality(point) {
     subIndexes,
     overall: overallIndex(subIndexes),
     measuredAt,
+    timeZone: timeZone ?? null,
   };
 }

@@ -96,8 +96,11 @@ exposes no user language at all.
 Hence `src/language.js`: `config.language`, a manifest `select`, **`fr` by
 default**. It is threaded through `buildDevice`/`buildStates`/`poll` as an
 argument rather than read from a module-level variable, so the mapping stays
-testable in both languages. The two TEXT states follow it too — a stored state is
-a string like a name, translated by nobody downstream.
+testable in both languages. The TEXT states follow it too — a stored state is a
+string like a name, translated by nobody downstream. That includes the reading
+time (`src/datetime.js`): its local ISO stamp is formatted by hand, never
+through `new Date()`, which would read AND re-render it in the container's
+timezone and shift a foreign location by hours.
 
 Re-publishing does NOT rename an existing device: the core upserts the params of
 the devices already created, never their name. A language switch therefore
