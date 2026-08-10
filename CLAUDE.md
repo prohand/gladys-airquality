@@ -207,8 +207,12 @@ discovery payload is validated by
   nonsensical pair is accepted by the API and only looks wrong in the UI. Stick
   to the pairs the front has translations for: `airquality-sensor`/`aqi`,
   `pm25-sensor`/`decimal`, `pm10-sensor`/`decimal`, `text`/`text`. NO₂, O₃ and
-  SO₂ have **no** concentration category — that is why only their sub-index is
-  published.
+  SO₂ have **no** concentration category: their concentration is published as
+  `unknown`/`decimal`, which the front renders as "value + unit" like any other
+  read-only decimal — the fallback costs the category icon and label, not the
+  number. `no2-matter-index-sensor` is a trap: despite the name it is an INTEGER
+  Matter index (unknown/low/medium/high/critical), and a µg/m³ value published
+  under it is rendered as one of those five words.
 - **A refused batch is invisible unless you say so**: the error only reaches the
   SDK acknowledgement. `publishDevices()` logs the payload at debug level and
   reports the reason through `setConnectionStatus`.

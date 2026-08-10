@@ -30,11 +30,16 @@ Each device exposes:
 | Polluant dominant                         | `text`                       | the pollutant that set the class              |
 | Sous-indice PM2,5 / PM10 / NO₂ / O₃ / SO₂ | `airquality-sensor`          | 1 to 6, per pollutant                         |
 | PM2,5, PM10                               | `pm25-sensor`, `pm10-sensor` | concentration in µg/m³                        |
+| NO₂, O₃, SO₂                              | `unknown`                    | concentration in µg/m³                        |
 
-Only PM2.5 and PM10 get a raw concentration feature: they are the only
-pollutants Gladys has a dedicated feature category for. NO₂, O₃ and SO₂ would
-have to be published as `unknown`, which says less than the sub-index that
-already carries them.
+Every pollutant gets its raw concentration next to its sub-index: a sub-index is
+a band, and a band hides the trend inside it. Only PM2.5 and PM10 have a
+dedicated Gladys category, so the three gases are published as `unknown` —
+`category`, `type` and `unit` are validated against three independent lists, and
+the front renders any read-only `decimal` as "value + unit", so the fallback
+costs the category icon and label, nothing else. `no2-matter-index-sensor` is
+NOT the category for NO₂: despite its name it is an integer Matter index
+(unknown/low/medium/high/critical), not a concentration.
 
 ## Where the data comes from
 

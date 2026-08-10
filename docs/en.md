@@ -105,7 +105,7 @@ Each device exposes:
 | **Air quality (text)**                      | Good, Fair, Moderate, Poor, Very poor, Extremely poor |
 | **Dominant pollutant**                      | the pollutant that set the index                      |
 | **PM2.5 / PM10 / NO₂ / O₃ / SO₂ sub-index** | 1 to 6, pollutant by pollutant                        |
-| **PM2.5** and **PM10**                      | the concentration, in µg/m³                           |
+| **PM2.5 / PM10 / NO₂ / O₃ / SO₂**           | the concentration, in µg/m³                           |
 | **Last data update**                        | the hour of the data, in the local time of the place  |
 
 The six classes of the index:
@@ -123,9 +123,12 @@ The overall index is that of the **worst pollutant** — this is how both the
 European index and the French ATMO index are defined: one degraded pollutant is
 enough to degrade the air.
 
-Only PM2.5 and PM10 also get a concentration feature: they are the only
-pollutants Gladys has a dedicated category for. NO₂, O₃ and SO₂ are carried by
-their sub-index.
+Next to its sub-index, every pollutant also gets its raw **concentration in
+µg/m³** — a sub-index is a band, and a band hides what happens inside it: an
+ozone afternoon climbing from 55 to 128 µg/m³ never leaves class 3. Gladys only
+has a dedicated category for PM2.5 and PM10, so NO₂, O₃ and SO₂ appear under the
+"Unknown" category: they show their value and their unit like the others, they
+are charted like the others, they simply have no category icon of their own.
 
 The **last data update** is the hour of the CAMS analysis for that place, not
 the hour the integration last ran: the model runs hourly, so refreshing more

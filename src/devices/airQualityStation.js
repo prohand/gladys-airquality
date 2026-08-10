@@ -16,10 +16,14 @@
 //     and knowing which one is half the information;
 //   - one SUB-INDEX per pollutant, which is literally what the index is made
 //     of, and what lets a scene watch ozone alone in summer;
-//   - the raw PM2.5 and PM10 CONCENTRATIONS in µg/m³. Only those two, because
-//     they are the only pollutants Gladys has a dedicated feature category for;
-//     NO₂, O₃ and SO₂ would have to be published as "unknown", which is worse
-//     than the sub-index that already carries them;
+//   - the raw CONCENTRATION of every pollutant in µg/m³, because a sub-index is
+//     a band and a band hides the trend inside it: an ozone afternoon climbing
+//     from 55 to 128 µg/m³ never leaves class 3. Gladys only has a dedicated
+//     feature category for PM2.5 and PM10, so NO₂, O₃ and SO₂ are published
+//     under `unknown` — the core validates category, type and unit
+//     independently, and a read-only decimal renders as "value + unit" whatever
+//     its category, so what the user loses is the category icon and label, not
+//     the number, its unit or its chart;
 //   - the hour the data itself was produced, as text. It belongs HERE, on every
 //     device, rather than on one integration-wide device: it is the hour of the
 //     model run over THAT point, in the local time of THAT point, so two
@@ -76,10 +80,23 @@ export const FEATURE = {
 const SUB_INDEX_SUFFIX = 'sub-index';
 const CONCENTRATION_SUFFIX = 'concentration';
 
-/** The pollutants Gladys has a dedicated concentration category for. */
+/**
+ * Category of the concentration feature of each pollutant.
+ *
+ * PM2.5 and PM10 are the only two Gladys has a dedicated category for — the
+ * gases fall back to UNKNOWN, which is a display choice and nothing more: the
+ * core validates `category`, `type` and `unit` against three independent lists,
+ * and the front renders any read-only decimal as "value + unit". Do NOT reach
+ * for `no2-matter-index-sensor` for NO₂: despite the name it is an INTEGER
+ * Matter index (unknown/low/medium/high/critical), not a concentration, and the
+ * front would render a µg/m³ value as one of those five words.
+ */
 const CONCENTRATION_CATEGORIES = {
   pm2_5: DEVICE_FEATURE_CATEGORIES.PM25_SENSOR,
   pm10: DEVICE_FEATURE_CATEGORIES.PM10_SENSOR,
+  nitrogen_dioxide: DEVICE_FEATURE_CATEGORIES.UNKNOWN,
+  ozone: DEVICE_FEATURE_CATEGORIES.UNKNOWN,
+  sulphur_dioxide: DEVICE_FEATURE_CATEGORIES.UNKNOWN,
 };
 
 /** Names of the features that are not about one pollutant. */
@@ -135,7 +152,7 @@ function indexFeature(externalId, name) {
   };
 }
 
-/** Shape shared by the two concentration features. */
+/** Shape shared by every concentration feature: a read-only µg/m³ decimal. */
 function concentrationFeature(externalId, name, category, max) {
   return {
     name,

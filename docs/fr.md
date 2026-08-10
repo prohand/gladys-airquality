@@ -109,7 +109,7 @@ Chaque appareil expose :
 | **Qualité de l'air (texte)**                  | Bon, Moyen, Dégradé, Mauvais, Très mauvais, Extrêmement mauvais |
 | **Polluant dominant**                         | le polluant qui a déterminé l'indice                            |
 | **Sous-indice PM2,5 / PM10 / NO₂ / O₃ / SO₂** | de 1 à 6, polluant par polluant                                 |
-| **PM2,5** et **PM10**                         | la concentration, en µg/m³                                      |
+| **PM2,5 / PM10 / NO₂ / O₃ / SO₂**             | la concentration, en µg/m³                                      |
 | **Dernière mise à jour des données**          | l'heure de la donnée, en heure locale du lieu                   |
 
 Les six classes de l'indice :
@@ -127,9 +127,14 @@ L'indice global est celui du **polluant le plus mauvais** — c'est ainsi que
 l'indice ATMO comme l'indice européen sont définis : un seul polluant dégradé
 suffit à dégrader l'air.
 
-Seuls PM2,5 et PM10 ont en plus une fonctionnalité de concentration : ce sont
-les seuls polluants pour lesquels Gladys dispose d'une catégorie dédiée. Le
-NO₂, l'O₃ et le SO₂ sont portés par leur sous-indice.
+À côté de son sous-indice, chaque polluant expose aussi sa **concentration brute
+en µg/m³** : un sous-indice est une classe, et une classe masque ce qui se passe
+à l'intérieur — un après-midi d'ozone qui monte de 55 à 128 µg/m³ ne quitte
+jamais la classe 3. Gladys ne dispose d'une catégorie dédiée que pour les PM2,5
+et les PM10, donc le NO₂, l'O₃ et le SO₂ apparaissent dans la catégorie
+« Inconnu » : ils affichent leur valeur et leur unité comme les autres, ils se
+tracent en courbe comme les autres, ils n'ont simplement pas d'icône de
+catégorie propre.
 
 La **dernière mise à jour des données** est l'heure de l'analyse CAMS pour ce
 lieu, pas celle du dernier passage de l'intégration : le modèle tourne toutes
