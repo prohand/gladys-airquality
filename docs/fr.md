@@ -130,11 +130,9 @@ suffit à dégrader l'air.
 À côté de son sous-indice, chaque polluant expose aussi sa **concentration brute
 en µg/m³** : un sous-indice est une classe, et une classe masque ce qui se passe
 à l'intérieur — un après-midi d'ozone qui monte de 55 à 128 µg/m³ ne quitte
-jamais la classe 3. Gladys ne dispose d'une catégorie dédiée que pour les PM2,5
-et les PM10, donc le NO₂, l'O₃ et le SO₂ apparaissent dans la catégorie
-« Inconnu » : ils affichent leur valeur et leur unité comme les autres, ils se
-tracent en courbe comme les autres, ils n'ont simplement pas d'icône de
-catégorie propre.
+jamais la classe 3. Chacun des cinq a sa propre catégorie de capteur dans
+Gladys, donc tous ont leur icône, leur pastille de couleur et leur courbe dans
+l'historique.
 
 La **dernière mise à jour des données** est l'heure de l'analyse CAMS pour ce
 lieu, pas celle du dernier passage de l'intégration : le modèle tourne toutes

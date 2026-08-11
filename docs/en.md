@@ -125,10 +125,9 @@ enough to degrade the air.
 
 Next to its sub-index, every pollutant also gets its raw **concentration in
 µg/m³** — a sub-index is a band, and a band hides what happens inside it: an
-ozone afternoon climbing from 55 to 128 µg/m³ never leaves class 3. Gladys only
-has a dedicated category for PM2.5 and PM10, so NO₂, O₃ and SO₂ appear under the
-"Unknown" category: they show their value and their unit like the others, they
-are charted like the others, they simply have no category icon of their own.
+ozone afternoon climbing from 55 to 128 µg/m³ never leaves class 3. Each of the
+five has its own Gladys sensor category, so all of them get their icon, their
+colour badge and their curve in the history.
 
 The **last data update** is the hour of the CAMS analysis for that place, not
 the hour the integration last ran: the model runs hourly, so refreshing more

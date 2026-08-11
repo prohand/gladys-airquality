@@ -18,12 +18,9 @@
 //     of, and what lets a scene watch ozone alone in summer;
 //   - the raw CONCENTRATION of every pollutant in µg/m³, because a sub-index is
 //     a band and a band hides the trend inside it: an ozone afternoon climbing
-//     from 55 to 128 µg/m³ never leaves class 3. Gladys only has a dedicated
-//     feature category for PM2.5 and PM10, so NO₂, O₃ and SO₂ are published
-//     under `unknown` — the core validates category, type and unit
-//     independently, and a read-only decimal renders as "value + unit" whatever
-//     its category, so what the user loses is the category icon and label, not
-//     the number, its unit or its chart;
+//     from 55 to 128 µg/m³ never leaves class 3. Each of the five has its own
+//     Gladys category — `pm25-sensor`, `pm10-sensor`, and the `no2-sensor`,
+//     `o3-sensor`, `so2-sensor` the core gained for the three gases;
 //   - the hour the data itself was produced, as text. It belongs HERE, on every
 //     device, rather than on one integration-wide device: it is the hour of the
 //     model run over THAT point, in the local time of THAT point, so two
@@ -81,22 +78,37 @@ const SUB_INDEX_SUFFIX = 'sub-index';
 const CONCENTRATION_SUFFIX = 'concentration';
 
 /**
- * Category of the concentration feature of each pollutant.
+ * The three gas categories the core gained WITH this feature, spelled out
+ * because the SDK does not carry them yet (0.11.0 has no `NO2_SENSOR`).
  *
- * PM2.5 and PM10 are the only two Gladys has a dedicated category for — the
- * gases fall back to UNKNOWN, which is a display choice and nothing more: the
- * core validates `category`, `type` and `unit` against three independent lists,
- * and the front renders any read-only decimal as "value + unit". Do NOT reach
- * for `no2-matter-index-sensor` for NO₂: despite the name it is an INTEGER
- * Matter index (unknown/low/medium/high/critical), not a concentration, and the
- * front would render a µg/m³ value as one of those five words.
+ * The literal IS the contract: `setDiscoveredDevices` validates `category`
+ * against `DEVICE_FEATURE_CATEGORIES_LIST`, a flat list of these very strings,
+ * so the SDK constant is a convenience and not the authority. The `??` picks
+ * the constant up on its own the day the SDK ships it, and the manifest's
+ * `gladys_version` is what keeps an older core — which would refuse the WHOLE
+ * batch on an unknown category — from ever seeing them.
+ */
+const NO2_SENSOR = DEVICE_FEATURE_CATEGORIES.NO2_SENSOR ?? 'no2-sensor';
+const O3_SENSOR = DEVICE_FEATURE_CATEGORIES.O3_SENSOR ?? 'o3-sensor';
+const SO2_SENSOR = DEVICE_FEATURE_CATEGORIES.SO2_SENSOR ?? 'so2-sensor';
+
+/**
+ * Category of the concentration feature of each pollutant. Every one of the
+ * five now has a dedicated one, so the concentrations get their icon, their
+ * label, their colour bands and their place in the "climate" group of the
+ * history — no `unknown` fallback anywhere.
+ *
+ * Do NOT reach for `no2-matter-index-sensor` for NO₂: despite the name it is an
+ * INTEGER Matter index (unknown/low/medium/high/critical), not a
+ * concentration, and the front would render a µg/m³ value as one of those five
+ * words. `no2-sensor` is the concentration category.
  */
 const CONCENTRATION_CATEGORIES = {
   pm2_5: DEVICE_FEATURE_CATEGORIES.PM25_SENSOR,
   pm10: DEVICE_FEATURE_CATEGORIES.PM10_SENSOR,
-  nitrogen_dioxide: DEVICE_FEATURE_CATEGORIES.UNKNOWN,
-  ozone: DEVICE_FEATURE_CATEGORIES.UNKNOWN,
-  sulphur_dioxide: DEVICE_FEATURE_CATEGORIES.UNKNOWN,
+  nitrogen_dioxide: NO2_SENSOR,
+  ozone: O3_SENSOR,
+  sulphur_dioxide: SO2_SENSOR,
 };
 
 /** Names of the features that are not about one pollutant. */

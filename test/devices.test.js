@@ -94,6 +94,19 @@ test('the device identity is derived from the location id, not from its name', (
   assert.equal(renamed, original);
 });
 
+// The categories the core validates against, as the integration may use them:
+// the SDK's list, plus the three gas concentration categories the core gained
+// after the SDK was last published (0.11.0 has no NO2_SENSOR). They are spelled
+// out rather than read from the source module, so that a typo in the source is
+// a failure here rather than a shared mistake — an unknown category has the
+// WHOLE discovery batch refused, which leaves the Discovery tab empty.
+const KNOWN_CATEGORIES = new Set([
+  ...Object.values(DEVICE_FEATURE_CATEGORIES),
+  'no2-sensor',
+  'o3-sensor',
+  'so2-sensor',
+]);
+
 test('every published feature carries what the core requires', () => {
   const gladys = createFakeGladys();
   const [device] = buildDiscoveredDevices(gladys, configWith(NANTES));
@@ -109,7 +122,7 @@ test('every published feature carries what the core requires', () => {
     assert.equal(typeof feature.name, 'string');
     assert.ok(feature.name.length > 0);
     assert.ok(
-      Object.values(DEVICE_FEATURE_CATEGORIES).includes(feature.category),
+      KNOWN_CATEGORIES.has(feature.category),
       `${feature.name}: unknown category ${feature.category}`,
     );
     assert.ok(!seen.has(feature.external_id), `duplicated external_id ${feature.external_id}`);
@@ -176,12 +189,18 @@ test('every pollutant also gets its concentration, in µg/m³', () => {
   const pm10 = device.features.find((f) => f.external_id === concentrationFeatureId(ids, 'pm10'));
   assert.equal(pm10.category, DEVICE_FEATURE_CATEGORIES.PM10_SENSOR);
 
-  // The gases have no dedicated concentration category in Gladys, so they are
-  // published as UNKNOWN — which the front renders as "value + unit" all the
-  // same. NOT `no2-matter-index-sensor`: that one is an integer Matter index.
-  for (const gas of ['nitrogen_dioxide', 'ozone', 'sulphur_dioxide']) {
+  // The three gas categories, asserted as LITERALS on purpose: the core
+  // validates `category` against a flat list of these strings, and the SDK does
+  // not export a constant for them yet. A typo here empties the Discovery tab.
+  // NOT `no2-matter-index-sensor`: that one is an integer Matter index.
+  const gasCategories = {
+    nitrogen_dioxide: 'no2-sensor',
+    ozone: 'o3-sensor',
+    sulphur_dioxide: 'so2-sensor',
+  };
+  for (const [gas, category] of Object.entries(gasCategories)) {
     const feature = device.features.find((f) => f.external_id === concentrationFeatureId(ids, gas));
-    assert.equal(feature.category, DEVICE_FEATURE_CATEGORIES.UNKNOWN);
+    assert.equal(feature.category, category);
   }
 });
 
