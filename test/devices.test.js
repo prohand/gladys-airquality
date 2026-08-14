@@ -94,6 +94,19 @@ test('the device identity is derived from the location id, not from its name', (
   assert.equal(renamed, original);
 });
 
+// The categories the core validates against, as the integration may use them:
+// the SDK's list, plus the three gas concentration categories the core gained
+// after the SDK was last published (0.11.0 has no NO2_SENSOR). They are spelled
+// out rather than read from the source module, so that a typo in the source is
+// a failure here rather than a shared mistake — an unknown category has the
+// WHOLE discovery batch refused, which leaves the Discovery tab empty.
+const KNOWN_CATEGORIES = new Set([
+  ...Object.values(DEVICE_FEATURE_CATEGORIES),
+  'no2-sensor',
+  'o3-sensor',
+  'so2-sensor',
+]);
+
 test('every published feature carries what the core requires', () => {
   const gladys = createFakeGladys();
   const [device] = buildDiscoveredDevices(gladys, configWith(NANTES));
@@ -109,7 +122,7 @@ test('every published feature carries what the core requires', () => {
     assert.equal(typeof feature.name, 'string');
     assert.ok(feature.name.length > 0);
     assert.ok(
-      Object.values(DEVICE_FEATURE_CATEGORIES).includes(feature.category),
+      KNOWN_CATEGORIES.has(feature.category),
       `${feature.name}: unknown category ${feature.category}`,
     );
     assert.ok(!seen.has(feature.external_id), `duplicated external_id ${feature.external_id}`);
@@ -154,25 +167,41 @@ test('every pollutant gets a sub-index feature', () => {
   }
 });
 
-test('PM2.5 and PM10 also get their concentration, in µg/m³', () => {
+test('every pollutant also gets its concentration, in µg/m³', () => {
   const gladys = createFakeGladys();
   const [device] = buildDiscoveredDevices(gladys, configWith(NANTES));
   const ids = gladys.externalIds(DEVICE_TYPE, NANTES.id);
 
+  for (const pollutant of allPollutants()) {
+    const feature = device.features.find(
+      (f) => f.external_id === concentrationFeatureId(ids, pollutant),
+    );
+    assert.ok(feature, `${pollutant} has no concentration feature`);
+    assert.equal(feature.type, DEVICE_FEATURE_TYPES.SENSOR.DECIMAL);
+    assert.equal(feature.unit, DEVICE_FEATURE_UNITS.MICROGRAM_PER_CUBIC_METER);
+    assert.equal(feature.min, 0);
+    assert.ok(feature.max > 0, `${pollutant} concentration has no usable max`);
+  }
+
   const pm25 = device.features.find((f) => f.external_id === concentrationFeatureId(ids, 'pm2_5'));
   assert.equal(pm25.category, DEVICE_FEATURE_CATEGORIES.PM25_SENSOR);
-  assert.equal(pm25.type, DEVICE_FEATURE_TYPES.SENSOR.DECIMAL);
-  assert.equal(pm25.unit, DEVICE_FEATURE_UNITS.MICROGRAM_PER_CUBIC_METER);
 
   const pm10 = device.features.find((f) => f.external_id === concentrationFeatureId(ids, 'pm10'));
   assert.equal(pm10.category, DEVICE_FEATURE_CATEGORIES.PM10_SENSOR);
 
-  // The gases have no dedicated concentration category in Gladys: their
-  // sub-index is what carries them, rather than an "unknown" feature.
-  assert.equal(
-    device.features.find((f) => f.external_id === concentrationFeatureId(ids, 'ozone')),
-    undefined,
-  );
+  // The three gas categories, asserted as LITERALS on purpose: the core
+  // validates `category` against a flat list of these strings, and the SDK does
+  // not export a constant for them yet. A typo here empties the Discovery tab.
+  // NOT `no2-matter-index-sensor`: that one is an integer Matter index.
+  const gasCategories = {
+    nitrogen_dioxide: 'no2-sensor',
+    ozone: 'o3-sensor',
+    sulphur_dioxide: 'so2-sensor',
+  };
+  for (const [gas, category] of Object.entries(gasCategories)) {
+    const feature = device.features.find((f) => f.external_id === concentrationFeatureId(ids, gas));
+    assert.equal(feature.category, category);
+  }
 });
 
 test('the device carries the place it was resolved from, for debugging', () => {
@@ -225,6 +254,8 @@ test('a reading becomes one state per feature that has a value', () => {
   assert.equal(byId[subIndexFeatureId(ids, 'pm10')], INDEX_LEVELS.MODERATE);
   assert.equal(byId[concentrationFeatureId(ids, 'pm2_5')], 5);
   assert.equal(byId[concentrationFeatureId(ids, 'pm10')], 45);
+  // The gases publish their concentration too, not only their sub-index.
+  assert.equal(byId[concentrationFeatureId(ids, 'ozone')], 250);
   assert.equal(byId[ids.feature(FEATURE.MEASURED_AT)], '06/08/2026 à 12:00 CEST');
 });
 

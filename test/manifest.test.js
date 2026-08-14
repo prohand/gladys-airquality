@@ -225,6 +225,14 @@ test('the compatibility range covers the version that opened GET /house', () => 
   assert.match(manifest.gladys_version, /^>=4\.(8[5-9]|9\d|\d{3,})\./);
 });
 
+test('the compatibility range covers the version that added the gas categories', () => {
+  // 4.86.0 is the first core that knows `no2-sensor`, `o3-sensor` and
+  // `so2-sensor`. This is NOT a cosmetic floor: an unknown category has the
+  // WHOLE discovery batch refused, so on an older core the Discovery tab would
+  // be empty of every device, not just of the three gas concentrations.
+  assert.match(manifest.gladys_version, /^>=4\.(8[6-9]|9\d|\d{3,})\./);
+});
+
 test('the manifest declares the image and the version the release workflow rewrites', () => {
   assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
   assert.ok(manifest.docker_image.endsWith(`:${manifest.version}`));

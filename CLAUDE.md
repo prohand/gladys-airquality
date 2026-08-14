@@ -118,8 +118,8 @@ into locations in one click. Three things hold it together:
   screen and enforces it server-side, so an integration that does not declare it
   gets a **403**. That status is therefore told apart from every other failure
   (`HOUSE_ACCESS_DENIED`) and answered with "re-install to grant it" — a retry
-  fixes nothing. `gladys_version` is `>=4.85.0`, the version that opened the
-  endpoint, and `test/manifest.test.js` checks both.
+  fixes nothing. 4.85.0 is the version that opened the endpoint; the manifest
+  floor is higher (see below) and `test/manifest.test.js` checks both.
 - **The call is made by hand**, with `GLADYS_HOST_API_URL` and
   `GLADYS_INTEGRATION_TOKEN`, because the JS SDK does not wrap the endpoint
   (0.11.0). Both are injected for the test, so `test/houses.test.js` never
@@ -186,6 +186,12 @@ Config/action field types: `string` (not `text`), `number`, `boolean`, `select`,
 Do not hand-edit `version` or `docker_image` in the manifest — the release
 workflow rewrites both.
 
+`gladys_version` is `>=4.86.0`, and it is the floor of the NEWEST core thing the
+integration uses, not of the oldest: 4.85.0 opened `GET /house`, 4.86.0 added the
+`no2-sensor`/`o3-sensor`/`so2-sensor` categories. Raise it whenever you reach for
+something new, because a core that does not know a category refuses the WHOLE
+discovery batch — an empty Discovery tab, not a device short of one feature.
+
 ## Gladys core constraints that are not obvious
 
 Each of these caused a real bug in the sibling pollen integration; the first two
@@ -206,9 +212,14 @@ discovery payload is validated by
   flat list — the core does not check that a type belongs to its category. So a
   nonsensical pair is accepted by the API and only looks wrong in the UI. Stick
   to the pairs the front has translations for: `airquality-sensor`/`aqi`,
-  `pm25-sensor`/`decimal`, `pm10-sensor`/`decimal`, `text`/`text`. NO₂, O₃ and
-  SO₂ have **no** concentration category — that is why only their sub-index is
-  published.
+  `pm25-sensor`/`decimal`, `pm10-sensor`/`decimal`, `text`/`text`, and the three
+  gas concentration categories `no2-sensor`/`o3-sensor`/`so2-sensor`, all
+  `decimal`. Those three are **newer than the SDK** (0.11.0 exports no
+  `NO2_SENSOR`), so `airQualityStation.js` spells the strings out — the flat
+  list the core validates against is the contract, the SDK constant is a
+  convenience. `no2-matter-index-sensor` is a trap: despite the name it is an
+  INTEGER Matter index (unknown/low/medium/high/critical), and a µg/m³ value
+  published under it is rendered as one of those five words.
 - **A refused batch is invisible unless you say so**: the error only reaches the
   SDK acknowledgement. `publishDevices()` logs the payload at debug level and
   reports the reason through `setConnectionStatus`.

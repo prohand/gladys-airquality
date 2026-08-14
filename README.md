@@ -18,23 +18,32 @@ the **Discovery** tab, ready to be added to Gladys.
 The one-click button reads the houses the user already placed on the map in
 Gladys (`GET /house`, opened by Gladys 4.85.0). That is a permission, not just an
 endpoint: the manifest declares `"location": true`, the install screen shows the
-request, and the core answers 403 to an integration that did not ask. It is also
-why `gladys_version` is `>=4.85.0`.
+request, and the core answers 403 to an integration that did not ask.
+
+`gladys_version` is `>=4.86.0`: 4.85.0 for that endpoint, 4.86.0 for the
+`no2-sensor` / `o3-sensor` / `so2-sensor` categories. The higher floor is not
+cosmetic — an unknown category has the **whole** discovery batch refused, so an
+older core would show an empty Discovery tab rather than a device missing three
+features.
 
 Each device exposes:
 
-| Feature                                   | Category                     | Value                                         |
-| ----------------------------------------- | ---------------------------- | --------------------------------------------- |
-| Indice de qualité de l'air                | `airquality-sensor`          | 1 to 6 — the class, the one to use in a scene |
-| Qualité de l'air (texte)                  | `text`                       | Bon, Moyen, Dégradé, Mauvais, Très mauvais, … |
-| Polluant dominant                         | `text`                       | the pollutant that set the class              |
-| Sous-indice PM2,5 / PM10 / NO₂ / O₃ / SO₂ | `airquality-sensor`          | 1 to 6, per pollutant                         |
-| PM2,5, PM10                               | `pm25-sensor`, `pm10-sensor` | concentration in µg/m³                        |
+| Feature                                   | Category                                | Value                                         |
+| ----------------------------------------- | --------------------------------------- | --------------------------------------------- |
+| Indice de qualité de l'air                | `airquality-sensor`                     | 1 to 6 — the class, the one to use in a scene |
+| Qualité de l'air (texte)                  | `text`                                  | Bon, Moyen, Dégradé, Mauvais, Très mauvais, … |
+| Polluant dominant                         | `text`                                  | the pollutant that set the class              |
+| Sous-indice PM2,5 / PM10 / NO₂ / O₃ / SO₂ | `airquality-sensor`                     | 1 to 6, per pollutant                         |
+| PM2,5, PM10                               | `pm25-sensor`, `pm10-sensor`            | concentration in µg/m³                        |
+| NO₂, O₃, SO₂                              | `no2-sensor`, `o3-sensor`, `so2-sensor` | concentration in µg/m³                        |
 
-Only PM2.5 and PM10 get a raw concentration feature: they are the only
-pollutants Gladys has a dedicated feature category for. NO₂, O₃ and SO₂ would
-have to be published as `unknown`, which says less than the sub-index that
-already carries them.
+Every pollutant gets its raw concentration next to its sub-index: a sub-index is
+a band, and a band hides the trend inside it. `no2-sensor`, `o3-sensor` and
+`so2-sensor` are recent core categories, and the SDK does not export a constant
+for them yet — the integration spells the strings out, which is what the core
+validates against anyway. `no2-matter-index-sensor` is NOT the category for NO₂:
+despite its name it is an integer Matter index
+(unknown/low/medium/high/critical), not a concentration.
 
 ## Where the data comes from
 
