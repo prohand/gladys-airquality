@@ -1,6 +1,6 @@
 {
   "name": "gladys-airquality",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "description": "Gladys Assistant external integration exposing the air quality index of the locations you choose, by postal code, from the Copernicus CAMS European data.",
   "type": "module",
