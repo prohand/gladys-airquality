@@ -45,6 +45,24 @@ const ALLOWED_FIELD_TYPES = [
   'section',
 ];
 
+// The shelves of the store catalog an integration can be browsed under. They
+// have nothing to do with the `category` of a device feature: those name what
+// the core renders, these name where the store lists the integration.
+const CATALOG_CATEGORIES = [
+  'climate',
+  'lighting',
+  'energy',
+  'security',
+  'multimedia',
+  'appliances',
+  'environment',
+  'protocols',
+  'network',
+  'notifications',
+  'assistants',
+  'services',
+];
+
 /** Every field of the manifest, config fields and action fields alike. */
 function allFields() {
   return [
@@ -230,6 +248,29 @@ test('the compatibility range covers the version that added the gas categories',
   // `so2-sensor`. This is NOT a cosmetic floor: an unknown category has the
   // WHOLE discovery batch refused, so on an older core the Discovery tab would
   // be empty of every device, not just of the three gas concentrations.
+  assert.match(manifest.gladys_version, /^>=4\.(8[6-9]|9\d|\d{3,})\./);
+});
+
+test('the catalog categories are one to three keys the store knows', () => {
+  // Air quality is one shelf, so one key: the field takes up to three, but a
+  // shelf the integration does not belong on is a wrong answer, not a bonus.
+  // An unknown key is dropped with a warning rather than refused, which is why
+  // nothing but this test would tell us about a typo.
+  assert.ok(Array.isArray(manifest.categories), 'categories must be an array');
+  assert.ok(
+    manifest.categories.length >= 1 && manifest.categories.length <= 3,
+    `categories: ${manifest.categories.length} keys, must be 1-3`,
+  );
+  assert.equal(
+    new Set(manifest.categories).size,
+    manifest.categories.length,
+    'the same category must not be declared twice',
+  );
+  for (const category of manifest.categories) {
+    assert.ok(CATALOG_CATEGORIES.includes(category), `unknown catalog category "${category}"`);
+  }
+  // Declaring the field at all is what needs 4.86.0 — the store validator
+  // refuses the pair, and an older core refuses the unknown field.
   assert.match(manifest.gladys_version, /^>=4\.(8[6-9]|9\d|\d{3,})\./);
 });
 

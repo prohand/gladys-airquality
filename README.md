@@ -21,10 +21,16 @@ endpoint: the manifest declares `"location": true`, the install screen shows the
 request, and the core answers 403 to an integration that did not ask.
 
 `gladys_version` is `>=4.86.0`: 4.85.0 for that endpoint, 4.86.0 for the
-`no2-sensor` / `o3-sensor` / `so2-sensor` categories. The higher floor is not
-cosmetic — an unknown category has the **whole** discovery batch refused, so an
-older core would show an empty Discovery tab rather than a device missing three
-features.
+`no2-sensor` / `o3-sensor` / `so2-sensor` categories and for the manifest
+`categories` field. The higher floor is not cosmetic — an unknown feature
+category has the **whole** discovery batch refused, so an older core would show
+an empty Discovery tab rather than a device missing three features.
+
+The manifest also declares `"categories": ["environment"]`, the shelf of the
+store catalog this integration is browsed under. It is one key and not three:
+the field takes up to three, but an air quality sensor belongs on that shelf
+alone. Nothing to do with the feature categories of the table below — those name
+what the core renders, this one names where the store lists the integration.
 
 Each device exposes:
 
@@ -39,9 +45,9 @@ Each device exposes:
 
 Every pollutant gets its raw concentration next to its sub-index: a sub-index is
 a band, and a band hides the trend inside it. `no2-sensor`, `o3-sensor` and
-`so2-sensor` are recent core categories, and the SDK does not export a constant
-for them yet — the integration spells the strings out, which is what the core
-validates against anyway. `no2-matter-index-sensor` is NOT the category for NO₂:
+`so2-sensor` are recent core categories — the integration spells the strings
+out, which is what the core validates against anyway (the SDK caught up and
+exports them since 0.12.0). `no2-matter-index-sensor` is NOT the category for NO₂:
 despite its name it is an integer Matter index
 (unknown/low/medium/high/critical), not a concentration.
 
