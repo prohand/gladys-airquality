@@ -122,7 +122,7 @@ into locations in one click. Three things hold it together:
   floor is higher (see below) and `test/manifest.test.js` checks both.
 - **The call is made by hand**, with `GLADYS_HOST_API_URL` and
   `GLADYS_INTEGRATION_TOKEN`, because the JS SDK does not wrap the endpoint
-  (0.11.0). Both are injected for the test, so `test/houses.test.js` never
+  (0.12.0). Both are injected for the test, so `test/houses.test.js` never
   touches the network.
 - **It is an import, not a sync.** The houses are read at the click; what comes
   out is ordinary locations. A house with `latitude: null` (never placed on the
@@ -188,9 +188,20 @@ workflow rewrites both.
 
 `gladys_version` is `>=4.86.0`, and it is the floor of the NEWEST core thing the
 integration uses, not of the oldest: 4.85.0 opened `GET /house`, 4.86.0 added the
-`no2-sensor`/`o3-sensor`/`so2-sensor` categories. Raise it whenever you reach for
-something new, because a core that does not know a category refuses the WHOLE
-discovery batch — an empty Discovery tab, not a device short of one feature.
+`no2-sensor`/`o3-sensor`/`so2-sensor` categories AND the manifest `categories`
+field. Raise it whenever you reach for something new, because a core that does
+not know a category refuses the WHOLE discovery batch — an empty Discovery tab,
+not a device short of one feature.
+
+`categories` is the store catalog shelf, `["environment"]` here, and it is a
+different word for a different thing than the `category` of a device feature: it
+says where the store lists the integration, not what the core renders. The store
+schema takes one to three keys among `climate`, `lighting`, `energy`, `security`,
+`multimedia`, `appliances`, `environment`, `protocols`, `network`,
+`notifications`, `assistants`, `services`, and rejects the manifest outright if
+the field is there with a `gladys_version` floor below 4.86.0. An unknown key is
+only dropped with a warning, so a typo is invisible in the store — that coupling
+and that vocabulary are what `test/manifest.test.js` checks.
 
 ## Gladys core constraints that are not obvious
 
@@ -214,9 +225,10 @@ discovery payload is validated by
   to the pairs the front has translations for: `airquality-sensor`/`aqi`,
   `pm25-sensor`/`decimal`, `pm10-sensor`/`decimal`, `text`/`text`, and the three
   gas concentration categories `no2-sensor`/`o3-sensor`/`so2-sensor`, all
-  `decimal`. Those three are **newer than the SDK** (0.11.0 exports no
-  `NO2_SENSOR`), so `airQualityStation.js` spells the strings out — the flat
-  list the core validates against is the contract, the SDK constant is a
+  `decimal`. Those three were **newer than the SDK** when they were adopted, so
+  `airQualityStation.js` spells the strings out; 0.12.0 exports `NO2_SENSOR`,
+  `O3_SENSOR` and `SO2_SENSOR` but there is nothing to change — the flat list
+  the core validates against is the contract, the SDK constant is a
   convenience. `no2-matter-index-sensor` is a trap: despite the name it is an
   INTEGER Matter index (unknown/low/medium/high/critical), and a µg/m³ value
   published under it is rendered as one of those five words.
