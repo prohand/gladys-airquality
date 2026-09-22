@@ -6,12 +6,16 @@
     "en": "Air quality index of any town in the world, from the Copernicus CAMS data.",
     "fr": "Indice de qualité de l'air de n'importe quelle commune du monde, données CAMS Copernicus."
   },
-  "version": "1.0.5",
-  "docker_image": "ghcr.io/prohand/gladys-airquality:1.0.5",
+  "version": "2.0.0",
+  "docker_image": "ghcr.io/prohand/gladys-airquality:2.0.0",
   "gladys_version": ">=5.1.0",
   "cover_image": "https://raw.githubusercontent.com/prohand/gladys-airquality/main/cover.png",
-  "categories": ["environment"],
-  "transports": ["cloud"],
+  "categories": [
+    "environment"
+  ],
+  "transports": [
+    "cloud"
+  ],
   "location": true,
   "config_schema": [
     {
