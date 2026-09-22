@@ -8,14 +8,10 @@
   },
   "version": "1.0.5",
   "docker_image": "ghcr.io/prohand/gladys-airquality:1.0.5",
-  "gladys_version": ">=4.86.0",
+  "gladys_version": ">=5.1.0",
   "cover_image": "https://raw.githubusercontent.com/prohand/gladys-airquality/main/cover.png",
-  "categories": [
-    "environment"
-  ],
-  "transports": [
-    "cloud"
-  ],
+  "categories": ["environment"],
+  "transports": ["cloud"],
   "location": true,
   "config_schema": [
     {
@@ -26,8 +22,8 @@
         "fr": "Comment ça marche"
       },
       "description": {
-        "en": "Add a location with the button below: type a town, anywhere in the world, and an air quality device appears in the Discovery tab, ready to be added to Gladys. Towns are resolved by the Open-Meteo geocoding API (GeoNames), and the pollutant concentrations come from the Copernicus CAMS data, republished as open data by Open-Meteo: no account and no API key are needed. In Europe the ~11 km CAMS European model is used, elsewhere the ~40 km CAMS global one. The index is the European Air Quality Index, whose six classes and thresholds are the ones the French ATMO index has used since 2021 — it is applied worldwide, so it is not the local national index of a country outside Europe.",
-        "fr": "Ajoutez un lieu avec le bouton ci-dessous : saisissez une commune, n'importe où dans le monde, puis un appareil qualité de l'air apparaît dans l'onglet Découverte, prêt à être ajouté à Gladys. Les communes sont résolues par l'API de géocodage Open-Meteo (GeoNames), et les concentrations de polluants proviennent des données CAMS de Copernicus, rediffusées en open data par Open-Meteo : aucun compte ni clé d'API n'est nécessaire. En Europe c'est le modèle CAMS européen à ~11 km qui est utilisé, ailleurs le modèle CAMS mondial à ~40 km. L'indice est l'indice européen de qualité de l'air, dont les six classes et les seuils sont ceux de l'indice ATMO français depuis 2021 — il est appliqué partout, ce n'est donc pas l'indice national local d'un pays hors d'Europe."
+        "en": "Add a location with the button below: type a town, anywhere in the world, and an air quality device appears in the Discovery tab, ready to be added to Gladys. Towns are resolved by the Open-Meteo geocoding API (GeoNames), and the pollutant concentrations come from the Copernicus CAMS data, republished as open data by Open-Meteo: no account and no API key are needed. In Europe the ~11 km CAMS European model is used, elsewhere the ~40 km CAMS global one. The index is the European Air Quality Index, whose six classes and thresholds are the ones the French ATMO index has used since 2021 — it is applied worldwide, so it is not the local national index of a country outside Europe. Two dashboard widgets, two scene triggers and two scene actions come with it: add a card from the dashboard editor, and the scene editor lists them under \"Air quality\".",
+        "fr": "Ajoutez un lieu avec le bouton ci-dessous : saisissez une commune, n'importe où dans le monde, puis un appareil qualité de l'air apparaît dans l'onglet Découverte, prêt à être ajouté à Gladys. Les communes sont résolues par l'API de géocodage Open-Meteo (GeoNames), et les concentrations de polluants proviennent des données CAMS de Copernicus, rediffusées en open data par Open-Meteo : aucun compte ni clé d'API n'est nécessaire. En Europe c'est le modèle CAMS européen à ~11 km qui est utilisé, ailleurs le modèle CAMS mondial à ~40 km. L'indice est l'indice européen de qualité de l'air, dont les six classes et les seuils sont ceux de l'indice ATMO français depuis 2021 — il est appliqué partout, ce n'est donc pas l'indice national local d'un pays hors d'Europe. Deux widgets de tableau de bord, deux déclencheurs et deux actions de scène sont fournis : ajoutez une carte depuis l'éditeur de tableau de bord, et l'éditeur de scènes les propose sous « Qualité de l'air »."
       },
       "links": [
         {
@@ -424,6 +420,772 @@
           },
           "required": false,
           "default": false
+        }
+      ]
+    }
+  ],
+  "widgets": [
+    {
+      "key": "air_quality_station",
+      "label": {
+        "en": "Air quality — one place",
+        "fr": "Qualité de l'air — un lieu"
+      },
+      "description": {
+        "en": "One location: its index, pollutant by pollutant, and the hours ahead.",
+        "fr": "Un lieu : son indice, polluant par polluant, et les heures à venir."
+      },
+      "icon": "wind",
+      "action_timeout_seconds": 30,
+      "settings": [
+        {
+          "key": "location",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Location",
+            "fr": "Lieu"
+          },
+          "description": {
+            "en": "The air quality device to display. Only the devices you already added from the Discovery tab are offered.",
+            "fr": "L'appareil qualité de l'air à afficher. Seuls les appareils déjà ajoutés depuis l'onglet Découverte sont proposés."
+          },
+          "required": true
+        },
+        {
+          "key": "pollutants",
+          "type": "multi_select",
+          "label": {
+            "en": "Pollutants followed",
+            "fr": "Polluants suivis"
+          },
+          "description": {
+            "en": "Tick the pollutants you care about: the index shown, the rows and the curve then only account for those. Nothing ticked means all of them, which is the index Gladys publishes.",
+            "fr": "Cochez les polluants qui vous intéressent : l'indice affiché, les lignes et la courbe ne tiennent alors compte que de ceux-là. Rien de coché signifie tous, c'est-à-dire l'indice publié par Gladys."
+          },
+          "required": false,
+          "options": [
+            {
+              "value": "pm2_5",
+              "label": {
+                "en": "PM2.5",
+                "fr": "PM2,5"
+              }
+            },
+            {
+              "value": "pm10",
+              "label": {
+                "en": "PM10",
+                "fr": "PM10"
+              }
+            },
+            {
+              "value": "nitrogen_dioxide",
+              "label": {
+                "en": "Nitrogen dioxide (NO₂)",
+                "fr": "Dioxyde d'azote (NO₂)"
+              }
+            },
+            {
+              "value": "ozone",
+              "label": {
+                "en": "Ozone (O₃)",
+                "fr": "Ozone (O₃)"
+              }
+            },
+            {
+              "value": "sulphur_dioxide",
+              "label": {
+                "en": "Sulphur dioxide (SO₂)",
+                "fr": "Dioxyde de soufre (SO₂)"
+              }
+            }
+          ]
+        },
+        {
+          "key": "forecast",
+          "type": "boolean",
+          "label": {
+            "en": "Show the hours ahead",
+            "fr": "Afficher les heures à venir"
+          },
+          "description": {
+            "en": "The hour-by-hour index for today and tomorrow, as a chart. Untick it for a compact card.",
+            "fr": "L'indice heure par heure pour aujourd'hui et demain, sous forme de graphique. Décochez pour une carte compacte."
+          },
+          "required": false,
+          "default": true
+        }
+      ]
+    },
+    {
+      "key": "air_quality_locations",
+      "label": {
+        "en": "Air quality — all places",
+        "fr": "Qualité de l'air — mes lieux"
+      },
+      "description": {
+        "en": "One row per configured location, with its index and its dominant pollutant.",
+        "fr": "Une ligne par lieu configuré, avec son indice et son polluant dominant."
+      },
+      "icon": "list",
+      "action_timeout_seconds": 60
+    }
+  ],
+  "scene_triggers": [
+    {
+      "key": "index_level_changed",
+      "label": {
+        "en": "Air quality index changed",
+        "fr": "L'indice de qualité de l'air a changé"
+      },
+      "description": {
+        "en": "Fired once when the overall index of a location moves from one class to another — never on every refresh.",
+        "fr": "Se déclenche une fois quand l'indice global d'un lieu passe d'une classe à une autre — jamais à chaque rafraîchissement."
+      },
+      "fields": [
+        {
+          "key": "location",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Location",
+            "fr": "Lieu"
+          },
+          "description": {
+            "en": "Leave empty to react to any of your locations.",
+            "fr": "Laissez vide pour réagir à n'importe lequel de vos lieux."
+          },
+          "required": false
+        },
+        {
+          "key": "level",
+          "type": "multi_select",
+          "label": {
+            "en": "New class",
+            "fr": "Nouvelle classe"
+          },
+          "description": {
+            "en": "Tick the classes to react to. Nothing ticked means any class.",
+            "fr": "Cochez les classes auxquelles réagir. Rien de coché signifie n'importe quelle classe."
+          },
+          "required": false,
+          "options": [
+            {
+              "value": "1",
+              "label": {
+                "en": "1 — Good",
+                "fr": "1 — Bon"
+              }
+            },
+            {
+              "value": "2",
+              "label": {
+                "en": "2 — Fair",
+                "fr": "2 — Moyen"
+              }
+            },
+            {
+              "value": "3",
+              "label": {
+                "en": "3 — Moderate",
+                "fr": "3 — Dégradé"
+              }
+            },
+            {
+              "value": "4",
+              "label": {
+                "en": "4 — Poor",
+                "fr": "4 — Mauvais"
+              }
+            },
+            {
+              "value": "5",
+              "label": {
+                "en": "5 — Very poor",
+                "fr": "5 — Très mauvais"
+              }
+            },
+            {
+              "value": "6",
+              "label": {
+                "en": "6 — Extremely poor",
+                "fr": "6 — Extrêmement mauvais"
+              }
+            }
+          ]
+        },
+        {
+          "key": "direction",
+          "type": "select",
+          "label": {
+            "en": "Direction",
+            "fr": "Sens"
+          },
+          "description": {
+            "en": "Leave empty for both. \"Worsening\" is the one to pick to close the windows.",
+            "fr": "Laissez vide pour les deux sens. « À la dégradation » est celui à choisir pour fermer les fenêtres."
+          },
+          "required": false,
+          "options": [
+            {
+              "value": "rising",
+              "label": {
+                "en": "Worsening",
+                "fr": "À la dégradation"
+              }
+            },
+            {
+              "value": "falling",
+              "label": {
+                "en": "Improving",
+                "fr": "À l'amélioration"
+              }
+            }
+          ]
+        }
+      ],
+      "variables": [
+        {
+          "key": "location_name",
+          "type": "string",
+          "label": {
+            "en": "Location name",
+            "fr": "Nom du lieu"
+          }
+        },
+        {
+          "key": "level",
+          "type": "string",
+          "label": {
+            "en": "New class (1-6)",
+            "fr": "Nouvelle classe (1-6)"
+          }
+        },
+        {
+          "key": "level_label",
+          "type": "string",
+          "label": {
+            "en": "New class, in words",
+            "fr": "Nouvelle classe, en toutes lettres"
+          }
+        },
+        {
+          "key": "previous_level",
+          "type": "string",
+          "label": {
+            "en": "Previous class (1-6)",
+            "fr": "Classe précédente (1-6)"
+          }
+        },
+        {
+          "key": "previous_level_label",
+          "type": "string",
+          "label": {
+            "en": "Previous class, in words",
+            "fr": "Classe précédente, en toutes lettres"
+          }
+        },
+        {
+          "key": "direction",
+          "type": "string",
+          "label": {
+            "en": "Direction (rising / falling)",
+            "fr": "Sens (rising / falling)"
+          }
+        },
+        {
+          "key": "measured_at",
+          "type": "string",
+          "label": {
+            "en": "Hour of the analysis",
+            "fr": "Heure de l'analyse"
+          }
+        },
+        {
+          "key": "pollutant",
+          "type": "string",
+          "label": {
+            "en": "Dominant pollutant (key)",
+            "fr": "Polluant dominant (clé)"
+          }
+        },
+        {
+          "key": "pollutant_name",
+          "type": "string",
+          "label": {
+            "en": "Dominant pollutant",
+            "fr": "Polluant dominant"
+          }
+        },
+        {
+          "key": "summary",
+          "type": "string",
+          "label": {
+            "en": "Ready-made sentence",
+            "fr": "Phrase toute faite"
+          },
+          "description": {
+            "en": "\"Air quality in Nantes: index 4/6 (Poor), dominant Ozone (O₃).\" — to drop straight into a notification.",
+            "fr": "« Qualité de l'air à Nantes : indice 4/6 (Mauvais), dominant Ozone (O₃). » — à glisser tel quel dans une notification."
+          }
+        }
+      ]
+    },
+    {
+      "key": "pollutant_index_level_changed",
+      "label": {
+        "en": "Sub-index of one pollutant changed",
+        "fr": "Le sous-indice d'un polluant a changé"
+      },
+      "description": {
+        "en": "The same thing, pollutant by pollutant: fired when the class of one pollutant changes at a location.",
+        "fr": "La même chose, polluant par polluant : se déclenche quand la classe d'un polluant change sur un lieu."
+      },
+      "fields": [
+        {
+          "key": "location",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Location",
+            "fr": "Lieu"
+          },
+          "description": {
+            "en": "Leave empty to react to any of your locations.",
+            "fr": "Laissez vide pour réagir à n'importe lequel de vos lieux."
+          },
+          "required": false
+        },
+        {
+          "key": "pollutant",
+          "type": "multi_select",
+          "label": {
+            "en": "Pollutants",
+            "fr": "Polluants"
+          },
+          "description": {
+            "en": "Tick the pollutants to react to. Nothing ticked means all of them.",
+            "fr": "Cochez les polluants auxquels réagir. Rien de coché signifie tous."
+          },
+          "required": false,
+          "options": [
+            {
+              "value": "pm2_5",
+              "label": {
+                "en": "PM2.5",
+                "fr": "PM2,5"
+              }
+            },
+            {
+              "value": "pm10",
+              "label": {
+                "en": "PM10",
+                "fr": "PM10"
+              }
+            },
+            {
+              "value": "nitrogen_dioxide",
+              "label": {
+                "en": "Nitrogen dioxide (NO₂)",
+                "fr": "Dioxyde d'azote (NO₂)"
+              }
+            },
+            {
+              "value": "ozone",
+              "label": {
+                "en": "Ozone (O₃)",
+                "fr": "Ozone (O₃)"
+              }
+            },
+            {
+              "value": "sulphur_dioxide",
+              "label": {
+                "en": "Sulphur dioxide (SO₂)",
+                "fr": "Dioxyde de soufre (SO₂)"
+              }
+            }
+          ]
+        },
+        {
+          "key": "level",
+          "type": "multi_select",
+          "label": {
+            "en": "New class",
+            "fr": "Nouvelle classe"
+          },
+          "description": {
+            "en": "Tick the classes to react to. Nothing ticked means any class.",
+            "fr": "Cochez les classes auxquelles réagir. Rien de coché signifie n'importe quelle classe."
+          },
+          "required": false,
+          "options": [
+            {
+              "value": "1",
+              "label": {
+                "en": "1 — Good",
+                "fr": "1 — Bon"
+              }
+            },
+            {
+              "value": "2",
+              "label": {
+                "en": "2 — Fair",
+                "fr": "2 — Moyen"
+              }
+            },
+            {
+              "value": "3",
+              "label": {
+                "en": "3 — Moderate",
+                "fr": "3 — Dégradé"
+              }
+            },
+            {
+              "value": "4",
+              "label": {
+                "en": "4 — Poor",
+                "fr": "4 — Mauvais"
+              }
+            },
+            {
+              "value": "5",
+              "label": {
+                "en": "5 — Very poor",
+                "fr": "5 — Très mauvais"
+              }
+            },
+            {
+              "value": "6",
+              "label": {
+                "en": "6 — Extremely poor",
+                "fr": "6 — Extrêmement mauvais"
+              }
+            }
+          ]
+        },
+        {
+          "key": "direction",
+          "type": "select",
+          "label": {
+            "en": "Direction",
+            "fr": "Sens"
+          },
+          "description": {
+            "en": "Leave empty for both.",
+            "fr": "Laissez vide pour les deux sens."
+          },
+          "required": false,
+          "options": [
+            {
+              "value": "rising",
+              "label": {
+                "en": "Worsening",
+                "fr": "À la dégradation"
+              }
+            },
+            {
+              "value": "falling",
+              "label": {
+                "en": "Improving",
+                "fr": "À l'amélioration"
+              }
+            }
+          ]
+        }
+      ],
+      "variables": [
+        {
+          "key": "location_name",
+          "type": "string",
+          "label": {
+            "en": "Location name",
+            "fr": "Nom du lieu"
+          }
+        },
+        {
+          "key": "level",
+          "type": "string",
+          "label": {
+            "en": "New class (1-6)",
+            "fr": "Nouvelle classe (1-6)"
+          }
+        },
+        {
+          "key": "level_label",
+          "type": "string",
+          "label": {
+            "en": "New class, in words",
+            "fr": "Nouvelle classe, en toutes lettres"
+          }
+        },
+        {
+          "key": "previous_level",
+          "type": "string",
+          "label": {
+            "en": "Previous class (1-6)",
+            "fr": "Classe précédente (1-6)"
+          }
+        },
+        {
+          "key": "previous_level_label",
+          "type": "string",
+          "label": {
+            "en": "Previous class, in words",
+            "fr": "Classe précédente, en toutes lettres"
+          }
+        },
+        {
+          "key": "direction",
+          "type": "string",
+          "label": {
+            "en": "Direction (rising / falling)",
+            "fr": "Sens (rising / falling)"
+          }
+        },
+        {
+          "key": "measured_at",
+          "type": "string",
+          "label": {
+            "en": "Hour of the analysis",
+            "fr": "Heure de l'analyse"
+          }
+        },
+        {
+          "key": "pollutant",
+          "type": "string",
+          "label": {
+            "en": "Pollutant (key)",
+            "fr": "Polluant (clé)"
+          }
+        },
+        {
+          "key": "pollutant_name",
+          "type": "string",
+          "label": {
+            "en": "Pollutant",
+            "fr": "Polluant"
+          }
+        },
+        {
+          "key": "concentration",
+          "type": "number",
+          "label": {
+            "en": "Concentration (µg/m³)",
+            "fr": "Concentration (µg/m³)"
+          }
+        },
+        {
+          "key": "summary",
+          "type": "string",
+          "label": {
+            "en": "Ready-made sentence",
+            "fr": "Phrase toute faite"
+          }
+        }
+      ]
+    }
+  ],
+  "scene_actions": [
+    {
+      "key": "get_air_quality",
+      "label": {
+        "en": "Read the air quality",
+        "fr": "Lire la qualité de l'air"
+      },
+      "description": {
+        "en": "Reads a location now and hands the class, the dominant pollutant and a ready-made sentence to the next actions of the scene.",
+        "fr": "Lit un lieu maintenant et transmet la classe, le polluant dominant et une phrase toute faite aux actions suivantes de la scène."
+      },
+      "timeout_seconds": 30,
+      "fields": [
+        {
+          "key": "location",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Location",
+            "fr": "Lieu"
+          },
+          "description": {
+            "en": "The air quality device to read.",
+            "fr": "L'appareil qualité de l'air à lire."
+          },
+          "required": true
+        },
+        {
+          "key": "pollutant",
+          "type": "select",
+          "label": {
+            "en": "Pollutant read",
+            "fr": "Polluant lu"
+          },
+          "description": {
+            "en": "\"Overall index\" reports the worst pollutant of the moment and names it. Pick a pollutant to read that one only.",
+            "fr": "« Indice global » rapporte le pire polluant du moment et le nomme. Choisissez un polluant pour ne lire que celui-là."
+          },
+          "required": false,
+          "default": "overall",
+          "options": [
+            {
+              "value": "overall",
+              "label": {
+                "en": "Overall index",
+                "fr": "Indice global"
+              }
+            },
+            {
+              "value": "pm2_5",
+              "label": {
+                "en": "PM2.5",
+                "fr": "PM2,5"
+              }
+            },
+            {
+              "value": "pm10",
+              "label": {
+                "en": "PM10",
+                "fr": "PM10"
+              }
+            },
+            {
+              "value": "nitrogen_dioxide",
+              "label": {
+                "en": "Nitrogen dioxide (NO₂)",
+                "fr": "Dioxyde d'azote (NO₂)"
+              }
+            },
+            {
+              "value": "ozone",
+              "label": {
+                "en": "Ozone (O₃)",
+                "fr": "Ozone (O₃)"
+              }
+            },
+            {
+              "value": "sulphur_dioxide",
+              "label": {
+                "en": "Sulphur dioxide (SO₂)",
+                "fr": "Dioxyde de soufre (SO₂)"
+              }
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "key": "level",
+          "type": "number",
+          "label": {
+            "en": "Index class (1-6)",
+            "fr": "Classe de l'indice (1-6)"
+          }
+        },
+        {
+          "key": "level_label",
+          "type": "string",
+          "label": {
+            "en": "Class, in words",
+            "fr": "Classe, en toutes lettres"
+          }
+        },
+        {
+          "key": "pollutant",
+          "type": "string",
+          "label": {
+            "en": "Pollutant read (key)",
+            "fr": "Polluant lu (clé)"
+          }
+        },
+        {
+          "key": "pollutant_name",
+          "type": "string",
+          "label": {
+            "en": "Pollutant read",
+            "fr": "Polluant lu"
+          }
+        },
+        {
+          "key": "concentration",
+          "type": "number",
+          "label": {
+            "en": "Concentration (µg/m³)",
+            "fr": "Concentration (µg/m³)"
+          }
+        },
+        {
+          "key": "location_name",
+          "type": "string",
+          "label": {
+            "en": "Location name",
+            "fr": "Nom du lieu"
+          }
+        },
+        {
+          "key": "measured_at",
+          "type": "string",
+          "label": {
+            "en": "Hour of the analysis",
+            "fr": "Heure de l'analyse"
+          }
+        },
+        {
+          "key": "summary",
+          "type": "string",
+          "label": {
+            "en": "Ready-made sentence",
+            "fr": "Phrase toute faite"
+          },
+          "description": {
+            "en": "\"Air quality in Nantes: index 4/6 (Poor), dominant Ozone (O₃).\" — to drop straight into a notification.",
+            "fr": "« Qualité de l'air à Nantes : indice 4/6 (Mauvais), dominant Ozone (O₃). » — à glisser tel quel dans une notification."
+          }
+        }
+      ]
+    },
+    {
+      "key": "refresh_air_quality",
+      "label": {
+        "en": "Refresh the air quality data",
+        "fr": "Rafraîchir les données de qualité de l'air"
+      },
+      "description": {
+        "en": "Reads the analysis again and republishes the states, without waiting for the next refresh. Leave the location empty to refresh them all.",
+        "fr": "Relit l'analyse et republie les états, sans attendre le prochain rafraîchissement. Laissez le lieu vide pour tous les rafraîchir."
+      },
+      "timeout_seconds": 60,
+      "fields": [
+        {
+          "key": "location",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Location",
+            "fr": "Lieu"
+          },
+          "description": {
+            "en": "Empty means every configured location.",
+            "fr": "Vide signifie tous les lieux configurés."
+          },
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "key": "refreshed",
+          "type": "number",
+          "label": {
+            "en": "Locations refreshed",
+            "fr": "Lieux rafraîchis"
+          }
+        },
+        {
+          "key": "failed",
+          "type": "number",
+          "label": {
+            "en": "Locations in error",
+            "fr": "Lieux en échec"
+          }
         }
       ]
     }

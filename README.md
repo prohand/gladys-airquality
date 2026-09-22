@@ -20,11 +20,12 @@ Gladys (`GET /house`, opened by Gladys 4.85.0). That is a permission, not just a
 endpoint: the manifest declares `"location": true`, the install screen shows the
 request, and the core answers 403 to an integration that did not ask.
 
-`gladys_version` is `>=4.86.0`: 4.85.0 for that endpoint, 4.86.0 for the
-`no2-sensor` / `o3-sensor` / `so2-sensor` categories and for the manifest
-`categories` field. The higher floor is not cosmetic — an unknown feature
-category has the **whole** discovery batch refused, so an older core would show
-an empty Discovery tab rather than a device missing three features.
+`gladys_version` is `>=5.1.0`, the floor of the NEWEST thing the manifest uses:
+4.85.0 for that endpoint, 4.86.0 for the `no2-sensor` / `o3-sensor` /
+`so2-sensor` categories and for the manifest `categories` field, and 5.1.0 for
+the `widgets`, `scene_triggers` and `scene_actions` fields. None of these floors
+is cosmetic — an unknown feature category has the **whole** discovery batch
+refused, and an unknown manifest field has the whole integration refused.
 
 The manifest also declares `"categories": ["environment"]`, the shelf of the
 store catalog this integration is browsed under. It is one key and not three:
@@ -50,6 +51,46 @@ out, which is what the core validates against anyway (the SDK caught up and
 exports them since 0.12.0). `no2-matter-index-sensor` is NOT the category for NO₂:
 despite its name it is an integer Matter index
 (unknown/low/medium/high/critical), not a concentration.
+
+## Dashboard widgets, scene triggers, scene actions
+
+Gladys 5.1 opened three surfaces to an integration, and this one declares all
+three. They are wired in `index.js` by key, exactly like the manifest actions,
+and `test/manifest.test.js` ties each declaration to its handler: a declared key
+with no handler is a card that does nothing, and a handler with no declaration is
+code nobody can reach — both fail silently at runtime.
+
+| Surface | Key                             | What it is                                                                 |
+| ------- | ------------------------------- | -------------------------------------------------------------------------- |
+| Widget  | `air_quality_station`           | One location: gauge, dominant pollutant, one row per pollutant, 48 h curve |
+| Widget  | `air_quality_locations`         | One row per configured location, with its dominant pollutant               |
+| Trigger | `index_level_changed`           | The overall class of a location MOVED                                      |
+| Trigger | `pollutant_index_level_changed` | The class of one pollutant MOVED                                           |
+| Action  | `get_air_quality`               | Reads a location now: class, dominant pollutant, ready-made sentence       |
+| Action  | `refresh_air_quality`           | Re-reads and republishes one location, or every one                        |
+
+Three things worth knowing before touching them:
+
+- **A widget content is a declarative payload, not HTML.** The core renders it,
+  themes it, caps it (8 components, 1 focal, 6 tiles, 2 texts, 1 status, 4
+  buttons) and drops what overflows **in content order**. The SDK exports the
+  very same checks — `validateWidgetContent` — and `test/widgets.test.js` asserts
+  they return `[]` for every card this integration builds.
+- **An event is a transition, never a state.** Every class is already a device
+  feature; what the triggers add is the MOVE, fired once, with the words the
+  scene needs (`{{triggerEvent.data.summary}}`). Nothing fires on the first
+  reading after a start — "unknown → 4" is not a change — and a pollutant with no
+  value fires nothing, because a missing measurement is not a return to good air
+  (`src/scenes/indexEvents.js`).
+- **A class travels as a STRING in the event data.** A trigger filter is a
+  `multi_select`, a manifest can only declare string option values, and the core
+  compares them with the event value: a number would match nothing.
+
+The curve of the hours ahead is the one piece of data that is not a device
+feature: it has not happened yet, so the core keeps no history of it. It travels
+as the `chart` component's inline series, read from a second Open-Meteo request
+(`fetchForecast`, same explicit CAMS domain as the device) with a cache of its
+own — the refresh cycle only ever needs the current hour.
 
 ## Where the data comes from
 
@@ -132,7 +173,7 @@ the geocoder does not know can still be added by its latitude and longitude.
 ├─ src/
 │  ├─ airQuality/
 │  │  ├─ index.js                    #   provider registry + read/grade
-│  │  ├─ openMeteo.js                #   CAMS Europe + CAMS global (no key)
+│  │  ├─ openMeteo.js                #   CAMS Europe + CAMS global (no key), current + curve
 │  │  └─ scale.js                    #   µg/m³ -> 1-6 index (EEA / ATMO bands)
 │  ├─ geocoding.js                   # town -> coordinates, worldwide (GeoNames)
 │  ├─ houses.js                      # the user's Gladys houses (GET /house)
@@ -143,8 +184,17 @@ the geocoder does not know can still be added by its latitude and longitude.
 │  ├─ coordinates.js                 # WGS-84 parsing/formatting
 │  ├─ language.js                    # language of the device NAMES
 │  ├─ locationEditor.js              # the buttons: add / import houses / list / remove
+│  ├─ indexText.js                   # an index in words: "4/6 (Mauvais)", summaries
 │  ├─ locations.js                   # the location list (source of truth)
-│  └─ richText.js                    # Unicode bold for the list labels
+│  ├─ richText.js                    # Unicode bold for the list labels
+│  ├─ scenes/
+│  │  ├─ indexEvents.js              #   scene TRIGGERS: one event per transition
+│  │  └─ sceneActions.js             #   scene ACTIONS: read now / refresh
+│  └─ widgets/
+│     ├─ keys.js                     #   widget keys + "re-pull me now" nudge
+│     ├─ content.js                  #   shared vocabulary: colours, language, clip
+│     ├─ stationWidget.js            #   one location, with the 48 h curve
+│     └─ locationsWidget.js          #   every location, one row each
 ├─ docs/{en,fr}.md                   # user documentation, linked from Gladys
 ├─ gladys-assistant-integration.json # manifest (name, config schema, actions…)
 ├─ Dockerfile                        # Node 24 Alpine, read-only rootfs ready

@@ -146,7 +146,10 @@ coordinate fields are the way out when the geocoder does not know a place, and
 they win over the name when both are given.
 
 **`src/airQuality/`** — a provider knows how to read concentrations for a point:
-`{ key, name, pollutants, supports(point), fetchConcentrations(point) }`, first
+`{ key, name, pollutants, supports(point), fetchConcentrations(point) }`, plus
+the OPTIONAL `fetchForecast(point)` the station widget draws its curve from (a
+second request with its own cache — the refresh cycle only needs the current
+hour; a provider without it makes the card drop its chart, not fail), first
 match wins, so callers never name an implementation. Two are registered, and the
 order IS the routing: `openMeteoEuropeProvider` (CAMS European, ~11 km, inside a
 bounding box) then `openMeteoGlobalProvider` (CAMS global, ~40 km, every point
@@ -170,6 +173,48 @@ deliberate — one scale means one number that means the same thing on every
 device — and it is stated in the manifest intro and both `docs/`: outside Europe
 this is not the local national index (US AQI, Chinese index, Indian CAQI).
 
+### Three surfaces opened by Gladys 5.1
+
+`widgets`, `scene_triggers` and `scene_actions` are manifest CAPABILITY fields.
+Declaring any of them pins `gladys_version` to `>=5.1.0` — an older core
+validates manifests against a strict field allowlist and rejects the whole
+integration over the unknown field. They are registered in `index.js` by key,
+like the manifest `actions`, and `test/manifest.test.js` ties every declaration
+to its handler in both directions. Keys are FOREVER: a scene or a dashboard
+stores the key, so a renamed key is a removed one.
+
+- **`src/widgets/`** — a card is a DECLARATIVE payload, never HTML: the core
+  renders, themes and caps it (8 components, 1 focal, 6 tiles, 2 texts, 1
+  status, 4 buttons) and drops what overflows **in content order**, so what
+  matters goes first. `test/widgets.test.js` asserts `validateWidgetContent()`
+  (the SDK's copy of the core checks) returns `[]` for every card built here.
+  `src/widgets/keys.js` exists only to break a cycle: the refresh cycle nudges
+  the widgets (`nudgeWidgets`, once per cycle), the widgets read the devices.
+  The station gauge is bound to the `index` FEATURE when every pollutant is
+  followed (live, no nudge needed) and carries a computed value otherwise.
+- **`src/scenes/indexEvents.js`** — an event is a TRANSITION, never a state.
+  Nothing fires on the first reading after a start ("unknown → 4" is not a
+  change), a pollutant with no value fires nothing (missing data is not a return
+  to class 1), and a refused event never takes the refresh cycle down. The
+  classes travel as STRINGS: a filter is a `multi_select`, whose option values
+  are strings, and the core compares them with the event value.
+- **`src/scenes/sceneActions.js`** — a scene action is NEVER a condition:
+  throwing fails that action alone and the scene carries on, so "no data" is an
+  output (`level: null`) the scene author can branch on. Only a broken call — an
+  unknown device — throws.
+
+A `source: "devices"` field (widget setting, trigger filter, action field)
+stores a device `external_id`; `findLocationByDeviceId()` is the single place
+that maps it back to a location.
+
+Unlike a device name, a widget content is built for ONE reader and the core says
+which language they read — `widgetLanguage()` uses it, falling back to
+`config.language`. Scene event data and action outputs are stored strings, so
+they use `config.language`. `src/indexText.js` is where a class is put into
+WORDS ("4/6 (Mauvais)", the summaries), shared by all three surfaces.
+`levelColor()` maps the six classes onto a palette with no orange nor purple:
+1-2 `success`, 3 `warning`, 4-6 `danger`.
+
 ### The manifest is a contract checked by tests
 
 `test/manifest.test.js` ties `gladys-assistant-integration.json` to the code:
@@ -186,10 +231,11 @@ Config/action field types: `string` (not `text`), `number`, `boolean`, `select`,
 Do not hand-edit `version` or `docker_image` in the manifest — the release
 workflow rewrites both.
 
-`gladys_version` is `>=4.86.0`, and it is the floor of the NEWEST core thing the
+`gladys_version` is `>=5.1.0`, and it is the floor of the NEWEST core thing the
 integration uses, not of the oldest: 4.85.0 opened `GET /house`, 4.86.0 added the
 `no2-sensor`/`o3-sensor`/`so2-sensor` categories AND the manifest `categories`
-field. Raise it whenever you reach for something new, because a core that does
+field, 5.1.0 the widgets and the scene declarations. The tests compare the floor
+as NUMBERS (`floorAtLeast`), never with a regex over the digits. Raise it whenever you reach for something new, because a core that does
 not know a category refuses the WHOLE discovery batch — an empty Discovery tab,
 not a device short of one feature.
 
@@ -268,6 +314,9 @@ discovery payload is validated by
   only catches what is not a point (a coordinate out of range, or none).
 - **A refresh cycle never throws.** A rejection inside a timer callback would
   take the container down; one location failing must not silence the others.
+  That includes the scene events it fires and the widget nudge it sends.
+- **A scene event is fired once per transition**, never on the first reading
+  after a start, never for missing data.
 
 ## Testing
 
@@ -277,7 +326,9 @@ cache, so tests that count requests must call `clearAirQualityCache()` in
 `beforeEach` — otherwise state leaks between tests.
 
 `test/helpers/fakeGladys.js` is the in-memory SDK stand-in; extend it when you
-use a new SDK method rather than mocking the SDK itself. The location editor
+use a new SDK method rather than mocking the SDK itself. Tests that fire scene
+events must call `resetIndexMemory()` in `beforeEach` for the same reason: the
+last known classes are module-level. The location editor
 takes its outside world by injection (`getConfig`, `setConfig`, `resolvePlace`,
 `isCovered`, `findCreatedDevice`), so `test/locationEditor.test.js` exercises the
 buttons with no Gladys and no network at all.

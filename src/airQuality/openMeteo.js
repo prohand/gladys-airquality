@@ -66,6 +66,16 @@ const CAMS_EUROPE_BBOX = { minLat: 30, maxLat: 72, minLon: -25, maxLon: 45 };
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const cache = new Map();
 
+// How many days the hourly curve covers: today and tomorrow. It is what the
+// dashboard widget draws, and the ONE thing here that is not a device feature —
+// a forecast has not happened yet, so the core keeps no history of it.
+const FORECAST_DAYS = 2;
+
+// The curve is a SECOND request, with a cache of its own: the refresh cycle of
+// every device only ever needs the current hour and runs whether or not a
+// dashboard is open, so the two must not share an entry.
+const forecastCache = new Map();
+
 /**
  * Whether a pair of numbers is a point on Earth at all.
  *
@@ -91,6 +101,51 @@ export function insideCamsEurope({ latitude, longitude } = {}) {
     longitude >= CAMS_EUROPE_BBOX.minLon &&
     longitude <= CAMS_EUROPE_BBOX.maxLon
   );
+}
+
+/**
+ * One request to the Open-Meteo air quality API, checked.
+ *
+ * Shared by the current hour and by the hourly curve: same host, same error
+ * handling, same timeout — only the query differs.
+ * @param {Record<string, string>} params query parameters, `domains` included
+ * @returns {Promise<object>} the parsed body
+ */
+async function requestOpenMeteo(params) {
+  const url = `${API_BASE_URL}?${new URLSearchParams(params).toString()}`;
+  logger.debug('Open-Meteo request ->', url);
+
+  const response = await fetch(url, {
+    headers: { Accept: 'application/json' },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  if (!response.ok) {
+    // Propagate: the caller decides whether to keep the previous values or to
+    // report the integration as disconnected.
+    throw new Error(`Open-Meteo HTTP ${response.status}`);
+  }
+
+  const body = await response.json();
+  if (body?.error) {
+    throw new Error(`Open-Meteo error: ${body.reason ?? 'unknown reason'}`);
+  }
+  return body;
+}
+
+/**
+ * The five concentrations held by one hour of an answer.
+ *
+ * `Number(null)` is 0 — a perfectly clean sky — so an absent value must stay
+ * null all the way to "no state published" and to "no point on the curve".
+ * @param {(variable: string) => unknown} valueOf reads one API variable
+ */
+function readConcentrations(valueOf) {
+  const concentrations = {};
+  for (const [pollutant, variable] of Object.entries(OPEN_METEO_VARIABLES)) {
+    const raw = valueOf(variable);
+    concentrations[pollutant] = raw === null || raw === undefined ? null : Number(raw);
+  }
+  return concentrations;
 }
 
 /**
@@ -142,7 +197,7 @@ function createOpenMeteoProvider({ key, name, domain, supports }) {
         return cached.value;
       }
 
-      const params = new URLSearchParams({
+      const body = await requestOpenMeteo({
         latitude: String(latitude),
         longitude: String(longitude),
         current: Object.values(OPEN_METEO_VARIABLES).join(','),
@@ -152,42 +207,63 @@ function createOpenMeteoProvider({ key, name, domain, supports }) {
         domains: domain,
         timezone: 'auto',
       });
-      const url = `${API_BASE_URL}?${params.toString()}`;
-      logger.debug('Open-Meteo request ->', url);
-
-      const response = await fetch(url, {
-        headers: { Accept: 'application/json' },
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      });
-      if (!response.ok) {
-        // Propagate: the caller decides whether to keep the previous values or to
-        // report the integration as disconnected.
-        throw new Error(`Open-Meteo HTTP ${response.status}`);
-      }
-
-      const body = await response.json();
-      if (body?.error) {
-        throw new Error(`Open-Meteo error: ${body.reason ?? 'unknown reason'}`);
-      }
 
       const current = body?.current ?? {};
-      const concentrations = {};
-      for (const [pollutant, variable] of Object.entries(OPEN_METEO_VARIABLES)) {
-        const raw = current[variable];
-        // `Number(null)` is 0 — a perfectly clean sky — so an absent value must
-        // stay null all the way to "no state published".
-        concentrations[pollutant] = raw === null || raw === undefined ? null : Number(raw);
-      }
-
       // The hour of the CAMS analysis, in the local time of the point — the
       // answer to "how fresh is this?", which the refresh interval alone does
       // not give: the model runs hourly and we may be reading a cached body.
       const value = {
-        concentrations,
+        concentrations: readConcentrations((variable) => current[variable]),
         measuredAt: current.time ?? null,
         timeZone: body?.timezone_abbreviation ?? null,
       };
       cache.set(cacheKey, { at: Date.now(), value });
+      return value;
+    },
+
+    /**
+     * Read the hourly curve of a point: today and tomorrow.
+     *
+     * This is the one piece of data that cannot be a device feature — it has
+     * not happened yet, so the core historizes nothing of it — and it is only
+     * ever read when a dashboard asks for the chart. Hence the second request
+     * and the second cache: the refresh cycle must not pay for a curve nobody
+     * is looking at.
+     * @param {{ latitude: number, longitude: number }} point
+     * @returns {Promise<{
+     *   hours: Array<{ t: string, concentrations: Record<string, number|null> }>,
+     *   timeZone: string|null,
+     * }>}
+     *   `t` is the LOCAL hour of the point, as the API stamps it, so the chart
+     *   marks the reader's "now" against the location's own clock.
+     */
+    async fetchForecast({ latitude, longitude }) {
+      const cacheKey = `${domain}:${latitude},${longitude}`;
+      const cached = forecastCache.get(cacheKey);
+      if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
+        logger.debug(`Forecast cache hit for ${cacheKey}`);
+        return cached.value;
+      }
+
+      const body = await requestOpenMeteo({
+        latitude: String(latitude),
+        longitude: String(longitude),
+        hourly: Object.values(OPEN_METEO_VARIABLES).join(','),
+        forecast_days: String(FORECAST_DAYS),
+        domains: domain,
+        timezone: 'auto',
+      });
+
+      const hourly = body?.hourly ?? {};
+      const times = Array.isArray(hourly.time) ? hourly.time : [];
+      const value = {
+        hours: times.map((t, index) => ({
+          t,
+          concentrations: readConcentrations((variable) => hourly[variable]?.[index]),
+        })),
+        timeZone: body?.timezone_abbreviation ?? null,
+      };
+      forecastCache.set(cacheKey, { at: Date.now(), value });
       return value;
     },
   };
@@ -217,7 +293,8 @@ export const openMeteoGlobalProvider = createOpenMeteoProvider({
   supports: isPoint,
 });
 
-/** Drop the cached responses (used by the tests). */
+/** Drop the cached responses, current hours and curves alike (the tests). */
 export function clearAirQualityCache() {
   cache.clear();
+  forecastCache.clear();
 }
