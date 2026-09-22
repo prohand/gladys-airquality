@@ -48,6 +48,8 @@ import {
 } from '../airQuality/scale.js';
 import { formatMeasuredAt } from '../datetime.js';
 import { DEFAULT_LANGUAGE, inLanguage } from '../language.js';
+import { publishIndexEvents } from '../scenes/indexEvents.js';
+import { nudgeWidgets } from '../widgets/keys.js';
 import {
   describeLocation,
   LOCATION_LINE_SEPARATOR,
@@ -144,6 +146,22 @@ export function deviceExternalIds(gladys, location) {
  */
 export function watchedLocations(config) {
   return usableLocations(config.locations).filter((location) => Boolean(findProvider(location)));
+}
+
+/**
+ * The location a device external_id designates, or undefined.
+ *
+ * Every `source: "devices"` field — a widget setting, a scene trigger filter, a
+ * scene action field — stores a device external_id, and this is the single
+ * place that maps one back to a location.
+ * @param {import('@gladysassistant/integration-sdk').GladysIntegration} gladys
+ * @param {{ locations: import('../locations.js').Location[] }} config
+ * @param {unknown} externalId
+ */
+export function findLocationByDeviceId(gladys, config, externalId) {
+  return watchedLocations(config).find(
+    (candidate) => deviceExternalIds(gladys, candidate).device === externalId,
+  );
 }
 
 /** Shape shared by every index feature: a read-only 1-6 class. */
@@ -370,7 +388,45 @@ export async function poll(gladys, location, language = DEFAULT_LANGUAGE) {
 
   // One request for every feature of the device (batch, up to 100).
   await gladys.publishStates(states);
+
+  // Then the scene triggers, which are about what MOVED rather than about what
+  // the values are: never throws, so a refused event costs nothing.
+  await publishIndexEvents(gladys, {
+    location,
+    deviceExternalId: ids.device,
+    reading,
+    language,
+  });
   return reading;
+}
+
+/**
+ * Read a list of locations and publish what they answer, counting the failures
+ * instead of propagating them.
+ *
+ * Shared by everything that refreshes ON DEMAND — the scene action, the widget
+ * buttons — because they all owe their caller a count rather than a stack
+ * trace, and one location failing must never cost the others their refresh.
+ * The scheduled cycle has its own reporting (see `refresh`).
+ * @param {import('@gladysassistant/integration-sdk').GladysIntegration} gladys
+ * @param {import('../locations.js').Location[]} locations
+ * @param {string} [language] language of the published TEXT states
+ * @returns {Promise<{ refreshed: number, failed: number }>}
+ */
+export async function refreshLocations(gladys, locations, language = DEFAULT_LANGUAGE) {
+  const outcomes = await Promise.all(
+    locations.map(async (location) => {
+      try {
+        await poll(gladys, location, language);
+        return true;
+      } catch (err) {
+        logger.error(`On-demand refresh failed for ${describeLocation(location)}`, err);
+        return false;
+      }
+    }),
+  );
+  const refreshed = outcomes.filter(Boolean).length;
+  return { refreshed, failed: outcomes.length - refreshed };
 }
 
 /** Why a location could not be read, WITHOUT naming it (the line already does). */
@@ -510,9 +566,7 @@ export const airQualityStation = {
    * @param {string} externalId external_id of the device to refresh
    */
   async onPoll(gladys, config, externalId) {
-    const location = watchedLocations(config).find(
-      (candidate) => deviceExternalIds(gladys, candidate).device === externalId,
-    );
+    const location = findLocationByDeviceId(gladys, config, externalId);
     if (!location) {
       throw new Error(`No location watches the device ${externalId}`);
     }
@@ -559,6 +613,11 @@ export const airQualityStation = {
         }
       }),
     );
+
+    // The device-bound gauge of the station card follows the published states
+    // on its own; its status rows and its forecast curve do not, so one nudge
+    // per cycle tells the open dashboards to re-pull them.
+    nudgeWidgets(gladys);
 
     const failures = outcomes.filter(Boolean);
     if (failures.length === 0) {

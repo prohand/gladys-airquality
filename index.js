@@ -10,6 +10,10 @@
 //   2. registers the event handlers BEFORE connect();
 //   3. publishes one discovered device per configured location, and refreshes
 //      that list every time the user adds or removes one;
+//   3bis. registers the three surfaces Gladys 5.1 opened — the dashboard
+//      WIDGETS (src/widgets/) and the scene ACTIONS (src/scenes/) — by the keys
+//      the manifest declares; the scene TRIGGERS are fired from the refresh
+//      cycle, not registered here;
 //   4. gives the location manager the two things it cannot do itself: write the
 //      configuration, and re-publish the devices when the list changes.
 //
@@ -30,6 +34,8 @@ import {
   locationDeviceIds,
 } from './src/devices/index.js';
 import { createLocationEditor } from './src/locationEditor.js';
+import { SCENE_ACTION_HANDLERS } from './src/scenes/index.js';
+import { WIDGETS } from './src/widgets/index.js';
 
 const gladys = new GladysIntegration();
 
@@ -198,6 +204,26 @@ for (const blueprint of DEVICE_BLUEPRINTS) {
 }
 for (const [actionKey, handler] of Object.entries(locationEditor.actions)) {
   gladys.onAction(actionKey, (fields) => handler(fields));
+}
+
+// --- Scene actions: cards of the scene editor's "Integrations" category ------
+// Same wiring as the manifest actions, one handler per declared key. What a
+// handler resolves becomes the `outputs` the following actions of the scene
+// can read; throwing fails THAT action only, never the scene.
+for (const [actionKey, handler] of Object.entries(SCENE_ACTION_HANDLERS)) {
+  gladys.onSceneAction(actionKey, (fields) => handler(gladys, { fields, config }));
+}
+
+// --- Dashboard widgets -------------------------------------------------------
+// The core PULLS a content when a dashboard shows the card, and relays the
+// taps of its buttons. One handler of each per widget key, and both are handed
+// the CURRENT configuration — a widget built at import time would keep the
+// locations of the moment the container started.
+for (const widget of WIDGETS) {
+  gladys.onWidgetGet(widget.key, (options) => widget.getContent(gladys, config, options));
+  gladys.onWidgetAction(widget.key, (actionKey, params, options) =>
+    widget.onAction(gladys, config, actionKey, params, options),
+  );
 }
 
 // --- Configuration updated by the user ---------------------------------------

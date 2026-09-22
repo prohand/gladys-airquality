@@ -178,6 +178,92 @@ day's ATMO bulletin.
 by the worldwide **GeoNames** database. Open, and with no account and no API key
 either.
 
+## On your dashboard
+
+Two widgets are offered in the dashboard editor, among the integration widgets.
+They follow the language of whoever is looking, and their colours follow the
+Gladys theme (light or dark).
+
+### Air quality — one place
+
+The card of one location, picked among the devices already added from the
+Discovery tab:
+
+- a **gauge** from 1 to 6 with the current index;
+- the **dominant pollutant**, the one that sets the index (nothing when the air
+  is good);
+- one row per pollutant, worst first, with its class **and** its concentration:
+  "4/6 (Poor) · 150 µg/m³";
+- the **curve of the hours ahead**, today and tomorrow — the one thing no sensor
+  can show, since it has not happened yet;
+- the hour of the CAMS analysis, and a **Refresh** button.
+
+Two settings per card:
+
+- **Pollutants followed** — tick the ones you care about (ozone in summer,
+  particles in winter): the gauge, the rows and the curve then only account for
+  those. Nothing ticked = all of them, which is the index Gladys publishes.
+- **Show the hours ahead** — untick it for a compact card.
+
+### Air quality — all places
+
+One row per configured location, with its index and its dominant pollutant, and
+a **Refresh** button that re-reads every location. No setting: the card shows
+the list managed in the configuration screen. Beyond ten locations, the caption
+says how many are left out.
+
+The colours: green for "Good" and "Fair", yellow for "Moderate", red from "Poor"
+to "Extremely poor". The widget palette has neither orange nor purple; repeating
+a red beats painting a "Poor" in yellow.
+
+## Using the index in a scene
+
+### 1. The measures, like any sensor
+
+The index, the sub-indexes and the concentrations are features of the device:
+the Gladys "Device value" trigger watches them like any sensor ("when the index
+goes above 3").
+
+### 2. The triggers
+
+In the scene editor, under **Air quality**:
+
+- **Air quality index changed** — once, when the overall index of a location
+  **moves** from one class to another. Never on every refresh.
+- **Sub-index of one pollutant changed** — the same thing, pollutant by
+  pollutant.
+
+Each trigger can be filtered (everything is optional, an empty filter means
+"any"): the **location**, the **new class(es)**, the **direction** ("Worsening"
+to close the windows, "Improving" to open them again), and for the second one
+the **pollutant(s)**.
+
+The scene gets ready-made variables, among which `{{triggerEvent.data.summary}}`:
+"Air quality in Home: index 4/6 (Poor), dominant Ozone (O₃)." — to drop
+straight into a notification. The others: location name, new and previous class
+(as a number and in words), direction, pollutant, concentration (second
+trigger), hour of the analysis.
+
+Two things worth knowing:
+
+- **Nothing fires on the first reading** after a start: the previous class is
+  unknown, and "unknown → 4" is not a change.
+- **Missing data is not a return to good air**: it fires nothing, and the next
+  class is compared with the last one actually read.
+
+### 3. The actions
+
+- **Read the air quality** — reads a location now and hands the next actions the
+  class, its label, the pollutant, its concentration, the hour of the analysis
+  and the same ready-made sentence. Pick "Overall index" (the worst pollutant of
+  the moment) or one pollutant. No data? The class is empty and the sentence says
+  so: test it in a condition rather than waiting for an error.
+- **Refresh the air quality data** — re-reads and republishes one location, or
+  all of them when the location is left empty, without waiting for the next
+  refresh. Returns how many locations were refreshed and how many failed.
+
+Example: "every day at 7 am → Read the air quality (Home) → send me `{{summary}}`".
+
 ## Settings
 
 - **Language of the device names** — French by default. Everything the
@@ -209,5 +295,7 @@ turns red, with the reason, when a location can no longer be read.
 - Outside Europe the model is **four times coarser** (~40 km against ~11 km): it
   describes a regional background well, a street less so.
 - Twenty locations maximum.
+- Gladys **5.1.0** or later: the version that opened widgets and scenes to
+  integrations.
 - A location cannot be edited: to watch another commune, remove it and add a new
   one.

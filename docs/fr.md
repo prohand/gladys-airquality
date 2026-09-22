@@ -186,6 +186,94 @@ reproduire le bulletin ATMO du jour.
 adossée à la base **GeoNames**, qui couvre le monde entier. Ouverte, sans compte
 ni clé d'API elle non plus.
 
+## Sur votre tableau de bord
+
+Deux widgets sont proposés dans l'éditeur de tableau de bord, rubrique des
+widgets d'intégration. Ils suivent la langue de la personne qui regarde, et
+leurs couleurs suivent le thème (clair ou sombre) de Gladys.
+
+### Qualité de l'air — un lieu
+
+La carte d'un lieu, à choisir parmi les appareils déjà ajoutés depuis l'onglet
+Découverte :
+
+- une **jauge** de 1 à 6 avec l'indice du moment ;
+- le **polluant dominant**, celui qui fixe l'indice (rien quand l'air est bon) ;
+- une ligne par polluant, du pire au meilleur, avec sa classe **et** sa
+  concentration : « 4/6 (Mauvais) · 150 µg/m³ » ;
+- la **courbe des heures à venir**, aujourd'hui et demain — la seule chose
+  qu'aucun capteur ne peut montrer, puisqu'elle n'a pas encore eu lieu ;
+- l'heure de l'analyse CAMS, et un bouton **Rafraîchir**.
+
+Deux réglages par carte :
+
+- **Polluants suivis** — cochez ceux qui vous intéressent (l'ozone l'été, les
+  particules l'hiver) : la jauge, les lignes et la courbe ne tiennent alors
+  compte que d'eux. Rien de coché = tous, soit l'indice publié par Gladys.
+- **Afficher les heures à venir** — décochez pour une carte compacte.
+
+### Qualité de l'air — mes lieux
+
+Une ligne par lieu configuré, avec son indice et son polluant dominant, plus un
+bouton **Rafraîchir** qui relit tous les lieux. Aucun réglage : la carte montre
+la liste gérée dans l'écran de configuration. Au-delà de dix lieux, la légende
+indique combien ne sont pas affichés.
+
+Les couleurs : vert pour « Bon » et « Moyen », jaune pour « Dégradé », rouge de
+« Mauvais » à « Extrêmement mauvais ». La palette des widgets n'a ni orange ni
+violet ; mieux vaut répéter un rouge que peindre un « Mauvais » en jaune.
+
+## Utiliser l'indice dans une scène
+
+### 1. Les mesures, comme n'importe quel capteur
+
+L'indice, les sous-indices et les concentrations sont des fonctionnalités de
+l'appareil : le déclencheur « Valeur d'un appareil » de Gladys les surveille
+comme n'importe quel capteur (« quand l'indice dépasse 3 »).
+
+### 2. Les déclencheurs
+
+Dans l'éditeur de scènes, rubrique **Qualité de l'air** :
+
+- **L'indice de qualité de l'air a changé** — une fois, quand l'indice global
+  d'un lieu **passe** d'une classe à une autre. Jamais à chaque
+  rafraîchissement.
+- **Le sous-indice d'un polluant a changé** — la même chose, polluant par
+  polluant.
+
+Chaque déclencheur se filtre (tout est facultatif, un filtre vide veut dire
+« n'importe lequel ») : le **lieu**, la ou les **nouvelles classes**, le
+**sens** (« À la dégradation » pour fermer les fenêtres, « À l'amélioration »
+pour les rouvrir), et pour le second le ou les **polluants**.
+
+La scène reçoit des variables prêtes à l'emploi, dont
+`{{triggerEvent.data.summary}}` : « Qualité de l'air à Maison : indice 4/6
+(Mauvais), dominant Ozone (O₃). » — à glisser tel quel dans une notification.
+Les autres : nom du lieu, nouvelle et ancienne classe (en chiffre et en
+lettres), sens, polluant, concentration (pour le second), heure de l'analyse.
+
+Deux choses à savoir :
+
+- **Rien ne se déclenche à la première lecture** après un démarrage : la classe
+  d'avant est inconnue, et « inconnu → 4 » n'est pas un changement.
+- **Une donnée manquante n'est pas un retour au bon air** : elle ne déclenche
+  rien, et la classe suivante est comparée à la dernière vraiment lue.
+
+### 3. Les actions
+
+- **Lire la qualité de l'air** — lit un lieu maintenant et transmet aux actions
+  suivantes la classe, son libellé, le polluant, sa concentration, l'heure de
+  l'analyse et la même phrase toute faite. Choisissez « Indice global » (le pire
+  polluant du moment) ou un polluant précis. Pas de donnée ? La classe est vide
+  et la phrase le dit : testez-la dans une condition plutôt que d'attendre une
+  erreur.
+- **Rafraîchir les données de qualité de l'air** — relit et republie un lieu,
+  ou tous si le lieu est laissé vide, sans attendre le prochain
+  rafraîchissement. Renvoie le nombre de lieux rafraîchis et en échec.
+
+Exemple : « tous les jours à 7 h → Lire la qualité de l'air (Maison) →
+m'envoyer `{{summary}}` ».
+
 ## Réglages
 
 - **Langue du nom des appareils** — français par défaut. Tout ce que
@@ -218,5 +306,7 @@ rouge, avec la raison, si un lieu ne peut plus être lu.
 - Hors d'Europe, le modèle est **quatre fois plus grossier** (~40 km contre
   ~11 km) : il décrit bien un fond régional, moins bien une rue.
 - Vingt lieux au maximum.
+- Gladys **5.1.0** minimum : c'est la version qui a ouvert les widgets et les
+  scènes aux intégrations.
 - Un lieu n'est pas modifiable : pour changer de commune, supprimez-le et
   ajoutez-en un autre.
