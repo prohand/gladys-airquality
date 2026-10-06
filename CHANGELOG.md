@@ -16,6 +16,10 @@ All notable changes to this integration are documented here. The format follows
 - Development dependencies updated to their latest versions (ESLint 10.12, Prettier 3.9.9, globals 17.13).
 - Manifest re-formatted with Prettier, so the CI format check passes again.
 
+### Fixed
+
+- The Release workflow re-runs Prettier on the manifest after `jq`, so a release no longer leaves `main` with a failing CI format check.
+
 ## [2.0.0] - 2026-09-22
 
 ### Added
