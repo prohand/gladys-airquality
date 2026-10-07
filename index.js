@@ -36,6 +36,7 @@ import {
 import { createLocationEditor } from './src/locationEditor.js';
 import { SCENE_ACTION_HANDLERS } from './src/scenes/index.js';
 import { WIDGETS } from './src/widgets/index.js';
+import { withPullDeadline } from './src/widgetDeadline.js';
 
 const gladys = new GladysIntegration();
 
@@ -220,7 +221,11 @@ for (const [actionKey, handler] of Object.entries(SCENE_ACTION_HANDLERS)) {
 // the CURRENT configuration — a widget built at import time would keep the
 // locations of the moment the container started.
 for (const widget of WIDGETS) {
-  gladys.onWidgetGet(widget.key, (options) => widget.getContent(gladys, config, options));
+  // Raced against a deadline: a cold Open-Meteo read must give a loading card,
+  // never miss the core's 15 s and leave the card dead (src/widgetDeadline.js).
+  gladys.onWidgetGet(widget.key, (options) =>
+    withPullDeadline(() => widget.getContent(gladys, config, options)),
+  );
   gladys.onWidgetAction(widget.key, (actionKey, params, options) =>
     widget.onAction(gladys, config, actionKey, params, options),
   );
