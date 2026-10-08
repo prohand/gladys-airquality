@@ -65,6 +65,19 @@ change it (`add_location`, `import_houses`, `list_locations`,
 - **Coordinates travel as TEXT** (`src/coordinates.js`). `Number('')` is 0 — a
   valid latitude — and a `number` field is an `<input type="number">` the browser
   sanitizes in its own locale, so a French one silently drops `48.8566`.
+- **The editor's actions run one at a time** (`exclusive`, a promise queue):
+  each reads the list, waits on the network (geocoder, houses, device list),
+  then writes. Two clicks in the same second would otherwise both write a list
+  built from the one of before, and one location would be lost. Each action
+  also RE-READS `getConfig()` right before `commit`, so a configuration saved
+  meanwhile is not overwritten.
+- **An id generated at load is written back.** `normalizeLocations` gives an
+  entry stored without an id (hand-edited, or very old) a random one — a new
+  one at every read, i.e. a new device `external_id`. `locationsMissingIds()`
+  detects it and `persistGeneratedIds()` writes the normalized list once,
+  through the same queue, when a configuration is loaded (`connected`,
+  `onConfigUpdated`) and BEFORE the devices are published. The id is never
+  derived from the entry instead: its name and label are what the user edits.
 - **Positions, not names, are what a user can pick.** A manifest `select` has
   static options, so the delete dropdown offers `1..MAX_LOCATIONS` and the
   listing action is what maps a number to a location. `MAX_LOCATIONS` and the
@@ -82,6 +95,11 @@ The SDK acks a thrown handler error as a plain `error: e.message` string, which
 loses the multi-language message. Every expected, user-facing outcome — a town
 nobody knows, an ambiguous name, half a coordinate pair — is
 **returned** as an `{ en, fr }` object; only unexpected failures throw. That
+includes a list SAVED whose devices could not be published: `commit()` returns
+the reason instead of rethrowing it, and the action answers "saved, but the
+publication failed: <reason>" (`savedButNotPublished`) — a bare error would make
+the user add the location a second time. A failed `setConfig` still throws:
+nothing was saved. That
 message is also the only thing the Configuration screen displays of what this
 integration has to say, hence the listing being an action too.
 

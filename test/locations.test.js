@@ -14,6 +14,7 @@ import {
   LOCATION_LINE_MARKER,
   LOCATIONS_KEY,
   locationAtPosition,
+  locationsMissingIds,
   MAX_LOCATIONS,
   newLocationId,
   normalizeLocations,
@@ -185,4 +186,20 @@ test('an empty list still says something', () => {
 
 test('the cap is a real number the delete dropdown can offer', () => {
   assert.ok(Number.isInteger(MAX_LOCATIONS) && MAX_LOCATIONS > 0);
+});
+
+test('an entry stored without an id is told apart, whatever shape the list came in', () => {
+  const { id, ...withoutId } = NANTES;
+  assert.equal(id, 'loc-11111111');
+  assert.equal(locationsMissingIds([NANTES]), false);
+  assert.equal(locationsMissingIds([NANTES, withoutId]), true);
+  assert.equal(locationsMissingIds([{ ...NANTES, id: '  ' }]), true, 'a blank id is no id');
+  assert.equal(locationsMissingIds(JSON.stringify([withoutId])), true);
+  assert.equal(locationsMissingIds('not json'), false);
+  assert.equal(locationsMissingIds(undefined), false);
+});
+
+test('a blank stored id is replaced, never published as one', () => {
+  const [location] = normalizeLocations([{ ...NANTES, id: '' }]);
+  assert.match(location.id, /^loc-[a-z0-9]{8}$/);
 });

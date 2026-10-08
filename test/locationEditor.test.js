@@ -13,7 +13,7 @@ import { normalizeConfig } from '../src/config.js';
 import { MAX_LISTED_CANDIDATES } from '../src/geocoding.js';
 import { HOUSE_ACCESS_DENIED } from '../src/houses.js';
 import { createLocationEditor } from '../src/locationEditor.js';
-import { LOCATIONS_KEY, MAX_LOCATIONS } from '../src/locations.js';
+import { LOCATIONS_KEY, MAX_LOCATIONS, serializeLocations } from '../src/locations.js';
 
 const NANTES = {
   name: 'Nantes',
@@ -50,6 +50,9 @@ function createEditor({
   isCovered = () => true,
   houses = [],
   houseError = null,
+  publishError = null,
+  writeError = null,
+  findCreatedDevice = async () => null,
 } = {}) {
   const state = { config: normalizeConfig({ [LOCATIONS_KEY]: locations }) };
   const written = [];
@@ -59,20 +62,27 @@ function createEditor({
   const editor = createLocationEditor({
     getConfig: () => state.config,
     async setConfig(patch) {
+      if (writeError) {
+        throw writeError;
+      }
       written.push(patch);
       state.config = normalizeConfig({ ...state.config, ...patch });
     },
     onLocationsChanged: async () => {
       republished += 1;
+      if (publishError) {
+        throw publishError;
+      }
     },
     isCovered,
     async resolvePlace(query, language) {
       queries.push({ query, language });
-      // Default: one unambiguous place, whatever was typed.
-      const candidates = resolve ? resolve(query) : [NANTES];
+      // Default: one unambiguous place, whatever was typed. `resolve` may
+      // answer late, like the real geocoder.
+      const candidates = resolve ? await resolve(query) : [NANTES];
       return { match: candidates.length === 1 ? candidates[0] : null, candidates };
     },
-    findCreatedDevice: async () => null,
+    findCreatedDevice,
     async listHouses() {
       if (houseError) {
         throw houseError;
@@ -83,6 +93,7 @@ function createEditor({
 
   return {
     ...editor.actions,
+    persistGeneratedIds: editor.persistGeneratedIds,
     state,
     written,
     queries,
@@ -513,4 +524,174 @@ test('every action answers in both languages, never as a bare string', async () 
     assert.equal(typeof message.en, 'string', 'a thrown/plain string loses the translation');
     assert.equal(typeof message.fr, 'string');
   }
+});
+
+// --- Two clicks at once ---------------------------------------------------------
+
+/** A promise that resolves after `ms` real milliseconds. */
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+test('two locations added at the same time are both kept', async () => {
+  // The first geocoding answers LAST: without the queue, both actions read the
+  // empty list and the second write drops the first location.
+  const editor = createEditor({
+    resolve: async (query) => {
+      await delay(query === 'Nantes' ? 30 : 0);
+      return [query === 'Nantes' ? NANTES : TOKYO];
+    },
+  });
+
+  const [first, second] = await Promise.all([
+    editor.add_location({ place: 'Nantes' }),
+    editor.add_location({ place: 'Tokyo' }),
+  ]);
+
+  assert.match(first.fr, /Lieu 1 « Nantes » ajouté/);
+  assert.match(second.fr, /Lieu 2 « Tokyo » ajouté/);
+  assert.deepEqual(
+    editor.state.config.locations.map((location) => location.name),
+    ['Nantes', 'Tokyo'],
+  );
+});
+
+test('an import and a deletion clicked together do not undo each other', async () => {
+  const editor = createEditor({ houses: [house('Chalet', 46.5, 6.6)] });
+  await editor.add_location({ name: 'Maison', place: 'Nantes' });
+
+  await Promise.all([
+    editor.import_houses(),
+    editor.remove_location({ location: '1', confirmation: true }),
+  ]);
+
+  assert.deepEqual(
+    editor.state.config.locations.map((location) => location.name),
+    ['Chalet'],
+  );
+});
+
+test('a configuration saved while the geocoder answers is not overwritten', async () => {
+  // The list is RE-READ right before it is written.
+  const lyon = { id: 'loc-lyon0001', name: 'Bureau', latitude: '45.7679', longitude: '4.8343' };
+  let editor;
+  editor = createEditor({
+    resolve: async () => {
+      editor.state.config = normalizeConfig({ [LOCATIONS_KEY]: [lyon] });
+      return [NANTES];
+    },
+  });
+
+  const message = await editor.add_location({ place: 'Nantes' });
+
+  assert.match(message.fr, /Lieu 2 « Nantes » ajouté/);
+  assert.deepEqual(
+    editor.state.config.locations.map((location) => location.id),
+    ['loc-lyon0001', editor.state.config.locations[1].id],
+  );
+});
+
+test('a deletion removes from the list of after the device lookup', async () => {
+  const lyon = { id: 'loc-lyon0001', name: 'Bureau', latitude: '45.7679', longitude: '4.8343' };
+  let editor;
+  editor = createEditor({
+    findCreatedDevice: async () => {
+      // Saved meanwhile: the Lyon location appears while Gladys is asked.
+      const { locations } = editor.state.config;
+      editor.state.config = normalizeConfig({
+        [LOCATIONS_KEY]: [...serializeLocations(locations), lyon],
+      });
+      return null;
+    },
+  });
+  await editor.add_location({ name: 'Maison', place: 'Nantes' });
+
+  await editor.remove_location({ location: '1', confirmation: true });
+
+  assert.deepEqual(
+    editor.state.config.locations.map((location) => location.name),
+    ['Bureau'],
+  );
+});
+
+test('a failed action does not block the next one', async () => {
+  const editor = createEditor({ writeError: new Error('host API down') });
+  await assert.rejects(editor.add_location({ place: 'Nantes' }), /host API down/);
+
+  const message = await editor.list_locations();
+  assert.match(message.fr, /Aucun lieu/);
+});
+
+// --- Saved, but not published ------------------------------------------------------
+
+test('a location saved but not published says both, in both languages', async () => {
+  const editor = createEditor({ publishError: new Error('Invalid category no2-sensor') });
+
+  const message = await editor.add_location({ place: 'Nantes' });
+
+  assert.equal(editor.state.config.locations.length, 1, 'the location IS saved');
+  assert.match(message.fr, /Lieu 1 « Nantes » enregistré/);
+  assert.match(
+    message.fr,
+    /la publication des appareils .* a échoué : Invalid category no2-sensor/,
+  );
+  assert.match(message.en, /saved .* but publishing the devices .* failed: Invalid category/);
+});
+
+test('an import saved but not published lists what was saved', async () => {
+  const editor = createEditor({
+    houses: [house('Chalet', 46.5, 6.6)],
+    publishError: new Error('refused'),
+  });
+
+  const message = await editor.import_houses();
+
+  assert.equal(editor.state.config.locations.length, 1);
+  assert.match(message.fr, /1 maison\(s\) Gladys enregistrée\(s\)/);
+  assert.match(message.fr, /a échoué : refused/);
+  // The name is in Unicode bold in a listing: assert on the plain detail.
+  assert.match(message.fr, /46\.50000, 6\.60000/);
+});
+
+test('a deletion saved but not re-published says the location is gone anyway', async () => {
+  const editor = createEditor();
+  await editor.add_location({ name: 'Maison', place: 'Nantes' });
+
+  const failing = createEditor({
+    locations: serializeLocations(editor.state.config.locations),
+    publishError: new Error('timeout'),
+  });
+  const message = await failing.remove_location({ location: '1', confirmation: true });
+
+  assert.equal(failing.state.config.locations.length, 0);
+  assert.match(message.fr, /Lieu « Maison » supprimé, mais la publication/);
+  assert.match(message.en, /timeout/);
+});
+
+// --- Ids generated at load time ------------------------------------------------------
+
+test('an entry stored without an id gets one that is written back, once', async () => {
+  const stored = [{ name: 'Maison', latitude: '47.2172', longitude: '-1.5534' }];
+  const editor = createEditor({ locations: stored });
+  const generated = editor.state.config.locations[0].id;
+
+  assert.equal(await editor.persistGeneratedIds(stored), true);
+
+  assert.equal(editor.written.length, 1, 'one write');
+  assert.equal(editor.written[0][LOCATIONS_KEY][0].id, generated, 'the id in use is the one kept');
+  // Read back, it no longer changes: the device external_id is stable.
+  assert.equal(normalizeConfig(editor.written[0]).locations[0].id, generated);
+  assert.equal(await editor.persistGeneratedIds(editor.written[0][LOCATIONS_KEY]), false);
+  assert.equal(editor.written.length, 1);
+});
+
+test('a list whose entries all carry an id is never rewritten', async () => {
+  const stored = [{ id: 'loc-11111111', name: 'Maison', latitude: '47.2', longitude: '-1.5' }];
+  const editor = createEditor({ locations: stored });
+  assert.equal(await editor.persistGeneratedIds(stored), false);
+  assert.equal(editor.written.length, 0);
+});
+
+test('failing to store the generated ids is logged, never thrown', async () => {
+  const stored = [{ name: 'Maison', latitude: '47.2172', longitude: '-1.5534' }];
+  const editor = createEditor({ locations: stored, writeError: new Error('host API down') });
+  assert.equal(await editor.persistGeneratedIds(stored), false);
 });

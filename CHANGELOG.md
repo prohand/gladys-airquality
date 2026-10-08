@@ -19,6 +19,12 @@ All notable changes to this integration are documented here. The format follows
 - Creating a device from the Discovery tab refreshes that device's location only, not every location.
 - The scene triggers forget the last classes of a removed location.
 
+### Fixed
+
+- Two location actions clicked in the same second no longer lose a location: the add, import, list and remove actions run one at a time, and re-read the list right before they write it.
+- A location stored without an id no longer gets a new random id — hence a new device — at every start: the generated id is written back once, before the devices are published.
+- A location saved whose devices Gladys then refused to publish is answered as "saved, but the publication failed: <reason>" in both languages, instead of a bare error.
+
 - The Gladys houses are read through the SDK's `gladys.getHouses()` (0.14.0) instead of a hand-made call to the host API; a 403 is still answered with "re-install to grant the access".
 
 ## [2.2.0] - 2026-10-07

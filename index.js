@@ -240,6 +240,7 @@ for (const widget of WIDGETS) {
 gladys.onConfigUpdated(async (newConfig) => {
   logger.info('onConfigUpdated -> new configuration received');
   config = normalizeConfig(newConfig);
+  await locationEditor.persistGeneratedIds(newConfig?.locations);
   // Nothing in that screen touches a location — it only holds the language and
   // the refresh interval, which `republish` applies by restarting the timers.
   await republish();
@@ -253,6 +254,9 @@ gladys.on('connected', async () => {
     // (GET /config is part of its resynchronization, before 'connected' is
     // emitted) and keeps it in `gladys.config`: no second request.
     config = normalizeConfig(gladys.config);
+    // An entry stored without an id was just given a random one: store it
+    // before anything is published under it, or it changes at the next start.
+    await locationEditor.persistGeneratedIds(gladys.config?.locations);
     forgetRemovedLocations(config.locations.map((location) => location.id));
 
     // 2) (Re)publish the devices as soon as we are connected.
