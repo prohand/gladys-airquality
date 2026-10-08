@@ -77,6 +77,90 @@ const FORECAST_DAYS = 2;
 const forecastCache = new Map();
 
 /**
+ * The entry a cache holds for `key` while it is still worth serving — in
+ * flight, or answered less than CACHE_TTL_MS ago. An expired entry is DROPPED
+ * on the way: the map would otherwise keep every point ever read until the
+ * same point is read again.
+ * @param {Map<string, { at: number|null, promise: Promise<unknown> }>} store
+ * @param {string} key
+ */
+function liveEntry(store, key) {
+  const entry = store.get(key);
+  if (!entry) {
+    return undefined;
+  }
+  if (entry.at === null || Date.now() - entry.at < CACHE_TTL_MS) {
+    return entry;
+  }
+  store.delete(key);
+  return undefined;
+}
+
+/**
+ * The cached answer for `key`, or the one `load` produces.
+ *
+ * What is cached is the PROMISE, from the moment the request leaves: the
+ * refresh cycle, a dashboard pull and the test button asking for the same
+ * point within the same second share ONE request instead of racing three to
+ * the API. The TTL starts when the answer arrives (`at` is null until then),
+ * and a request that fails leaves no entry behind, so the next read tries
+ * again rather than being served the failure for ten minutes.
+ * @template T
+ * @param {Map<string, { at: number|null, promise: Promise<T> }>} store
+ * @param {string} key
+ * @param {() => Promise<T>} load
+ * @returns {Promise<T>}
+ */
+function cachedRead(store, key, load) {
+  const live = liveEntry(store, key);
+  if (live) {
+    logger.debug(`Cache hit for ${key}${live.at === null ? ' (in flight)' : ''}`);
+    return live.promise;
+  }
+  const entry = { at: null, promise: load() };
+  store.set(key, entry);
+  // Also what marks the promise as handled: an entry nobody awaits (a point
+  // read ahead by `prefetchConcentrations`) must never become an unhandled
+  // rejection, which would take the container down.
+  entry.promise.then(
+    () => {
+      // A cache cleared while the request was in flight stays cleared.
+      if (store.get(key) === entry) {
+        entry.at = Date.now();
+      }
+    },
+    () => {
+      if (store.get(key) === entry) {
+        store.delete(key);
+      }
+    },
+  );
+  return entry.promise;
+}
+
+/**
+ * How long a `Retry-After` header asks to wait, in milliseconds, or null.
+ *
+ * Both forms of RFC 9110 are read: a number of seconds, or an HTTP date. The
+ * refresh cycle uses it to space its retry of a location Open-Meteo throttled
+ * (HTTP 429) instead of knocking again thirty seconds later.
+ * @param {string|null|undefined} value
+ * @param {number} [now] the current time, in milliseconds (the tests)
+ * @returns {number|null}
+ */
+export function parseRetryAfter(value, now = Date.now()) {
+  const text = String(value ?? '').trim();
+  if (text === '') {
+    return null;
+  }
+  if (/^\d+$/.test(text)) {
+    return Number(text) * 1000;
+  }
+  const at = Date.parse(text);
+  return Number.isNaN(at) ? null : Math.max(0, at - now);
+}
+
+/**
  * Whether a pair of numbers is a point on Earth at all.
  *
  * This is the floor of every `supports()` below: a stored coordinate can be
@@ -121,8 +205,15 @@ async function requestOpenMeteo(params) {
   });
   if (!response.ok) {
     // Propagate: the caller decides whether to keep the previous values or to
-    // report the integration as disconnected.
-    throw new Error(`Open-Meteo HTTP ${response.status}`);
+    // report the integration as disconnected. The status and the server's own
+    // "come back later" travel with the error, for the refresh cycle's retry.
+    const error = new Error(`Open-Meteo HTTP ${response.status}`);
+    error.status = response.status;
+    const retryAfterMs = parseRetryAfter(response.headers?.get?.('retry-after'));
+    if (retryAfterMs !== null) {
+      error.retryAfterMs = retryAfterMs;
+    }
+    throw error;
   }
 
   const body = await response.json();
@@ -149,6 +240,23 @@ function readConcentrations(valueOf) {
 }
 
 /**
+ * The current hour of ONE point of an answer: the shape `fetchConcentrations`
+ * resolves to, whether the point was asked alone or in a batch.
+ * @param {object} body the answer for that point
+ */
+function parseCurrent(body) {
+  const current = body?.current ?? {};
+  // The hour of the CAMS analysis, in the local time of the point — the
+  // answer to "how fresh is this?", which the refresh interval alone does not
+  // give: the model runs hourly and we may be reading a cached body.
+  return {
+    concentrations: readConcentrations((variable) => current[variable]),
+    measuredAt: current.time ?? null,
+    timeZone: body?.timezone_abbreviation ?? null,
+  };
+}
+
+/**
  * One provider reading one CAMS domain. The two differ by their coverage and by
  * the `domains` parameter they ask for — everything else, request, parsing and
  * cache, is the same code.
@@ -159,6 +267,22 @@ function readConcentrations(valueOf) {
  * @param {(point: object) => boolean} spec.supports
  */
 function createOpenMeteoProvider({ key, name, domain, supports }) {
+  // The domain is part of the key: the same point read on two models is two
+  // different answers, and one must never be served for the other.
+  const cacheKey = ({ latitude, longitude }) => `${domain}:${latitude},${longitude}`;
+
+  /** The query of the current hour, for one point or several. */
+  const currentQuery = (points) => ({
+    latitude: points.map((point) => String(point.latitude)).join(','),
+    longitude: points.map((point) => String(point.longitude)).join(','),
+    current: Object.values(OPEN_METEO_VARIABLES).join(','),
+    // The domain EXPLICITLY: `auto` blends the two models, and a location
+    // whose series silently switches from one to the other is two datasets
+    // under one chart.
+    domains: domain,
+    timezone: 'auto',
+  });
+
   return {
     key,
     name,
@@ -187,38 +311,58 @@ function createOpenMeteoProvider({ key, name, domain, supports }) {
      *   point (`timezone=auto` below), and `timeZone` the abbreviation that
      *   makes it readable from anywhere.
      */
-    async fetchConcentrations({ latitude, longitude }) {
-      // The domain is part of the key: the same point read on two models is two
-      // different answers, and one must never be served for the other.
-      const cacheKey = `${domain}:${latitude},${longitude}`;
-      const cached = cache.get(cacheKey);
-      if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
-        logger.debug(`Cache hit for ${cacheKey}`);
-        return cached.value;
+    fetchConcentrations(point) {
+      return cachedRead(cache, cacheKey(point), async () =>
+        parseCurrent(await requestOpenMeteo(currentQuery([point]))),
+      );
+    },
+
+    /**
+     * Read the current hour of SEVERAL points in ONE request, ahead of the
+     * `fetchConcentrations` calls that will ask for them.
+     *
+     * Open-Meteo takes comma-separated latitudes and longitudes and answers an
+     * array, one entry per point, in the order asked. Twenty locations are
+     * then one request per domain per refresh cycle instead of twenty. Nothing
+     * is returned: each point's share of the answer is put in the cache under
+     * that point's own key — in flight at once — so the per-point reads that
+     * follow are served from it, the cache keeps working point by point, and
+     * a batch that fails simply leaves each of them to fail (and be retried)
+     * on its own. Never throws.
+     *
+     * A point already cached, or already in flight, is not asked again; a
+     * lone point left is left to `fetchConcentrations`, whose request is the
+     * plain single-point one.
+     * @param {Array<{ latitude: number, longitude: number }>} points
+     */
+    prefetchConcentrations(points) {
+      const wanted = new Map();
+      for (const point of points) {
+        const key = cacheKey(point);
+        if (!wanted.has(key) && !liveEntry(cache, key)) {
+          wanted.set(key, point);
+        }
+      }
+      if (wanted.size < 2) {
+        return;
       }
 
-      const body = await requestOpenMeteo({
-        latitude: String(latitude),
-        longitude: String(longitude),
-        current: Object.values(OPEN_METEO_VARIABLES).join(','),
-        // The domain EXPLICITLY: `auto` blends the two models, and a location
-        // whose series silently switches from one to the other is two datasets
-        // under one chart.
-        domains: domain,
-        timezone: 'auto',
+      const asked = [...wanted.values()];
+      logger.debug(`Batching ${asked.length} points on ${domain}`);
+      const batch = requestOpenMeteo(currentQuery(asked)).then((body) => {
+        // Answered point by point, by POSITION: an answer that does not hold
+        // exactly one entry per point asked cannot be told apart, and serving
+        // one town the air of another is the one thing never to do.
+        if (!Array.isArray(body) || body.length !== asked.length) {
+          throw new Error(
+            `Open-Meteo answered ${Array.isArray(body) ? body.length : 'no list of'} point(s) for ${asked.length} asked`,
+          );
+        }
+        return body.map(parseCurrent);
       });
-
-      const current = body?.current ?? {};
-      // The hour of the CAMS analysis, in the local time of the point — the
-      // answer to "how fresh is this?", which the refresh interval alone does
-      // not give: the model runs hourly and we may be reading a cached body.
-      const value = {
-        concentrations: readConcentrations((variable) => current[variable]),
-        measuredAt: current.time ?? null,
-        timeZone: body?.timezone_abbreviation ?? null,
-      };
-      cache.set(cacheKey, { at: Date.now(), value });
-      return value;
+      asked.forEach((point, index) => {
+        cachedRead(cache, cacheKey(point), () => batch.then((values) => values[index]));
+      });
     },
 
     /**
@@ -237,34 +381,27 @@ function createOpenMeteoProvider({ key, name, domain, supports }) {
      *   `t` is the LOCAL hour of the point, as the API stamps it, so the chart
      *   marks the reader's "now" against the location's own clock.
      */
-    async fetchForecast({ latitude, longitude }) {
-      const cacheKey = `${domain}:${latitude},${longitude}`;
-      const cached = forecastCache.get(cacheKey);
-      if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
-        logger.debug(`Forecast cache hit for ${cacheKey}`);
-        return cached.value;
-      }
+    fetchForecast(point) {
+      return cachedRead(forecastCache, cacheKey(point), async () => {
+        const body = await requestOpenMeteo({
+          latitude: String(point.latitude),
+          longitude: String(point.longitude),
+          hourly: Object.values(OPEN_METEO_VARIABLES).join(','),
+          forecast_days: String(FORECAST_DAYS),
+          domains: domain,
+          timezone: 'auto',
+        });
 
-      const body = await requestOpenMeteo({
-        latitude: String(latitude),
-        longitude: String(longitude),
-        hourly: Object.values(OPEN_METEO_VARIABLES).join(','),
-        forecast_days: String(FORECAST_DAYS),
-        domains: domain,
-        timezone: 'auto',
+        const hourly = body?.hourly ?? {};
+        const times = Array.isArray(hourly.time) ? hourly.time : [];
+        return {
+          hours: times.map((t, index) => ({
+            t,
+            concentrations: readConcentrations((variable) => hourly[variable]?.[index]),
+          })),
+          timeZone: body?.timezone_abbreviation ?? null,
+        };
       });
-
-      const hourly = body?.hourly ?? {};
-      const times = Array.isArray(hourly.time) ? hourly.time : [];
-      const value = {
-        hours: times.map((t, index) => ({
-          t,
-          concentrations: readConcentrations((variable) => hourly[variable]?.[index]),
-        })),
-        timeZone: body?.timezone_abbreviation ?? null,
-      };
-      forecastCache.set(cacheKey, { at: Date.now(), value });
-      return value;
     },
   };
 }
