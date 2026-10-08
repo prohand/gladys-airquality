@@ -249,8 +249,10 @@ gladys.onConfigUpdated(async (newConfig) => {
 // The SDK logs the WebSocket lifecycle itself (under the `gladys-sdk` name).
 gladys.on('connected', async () => {
   try {
-    // 1) Fetch the configuration filled in by the user.
-    config = normalizeConfig(await gladys.getConfig());
+    // 1) The configuration filled in by the user. The SDK has just read it
+    // (GET /config is part of its resynchronization, before 'connected' is
+    // emitted) and keeps it in `gladys.config`: no second request.
+    config = normalizeConfig(gladys.config);
     forgetRemovedLocations(config.locations.map((location) => location.id));
 
     // 2) (Re)publish the devices as soon as we are connected.
@@ -294,7 +296,11 @@ gladys.handleShutdown((signal) => {
 
 // --- Startup -----------------------------------------------------------------
 logger.info('Starting the Air quality integration...');
+// connect() only rejects when Gladys refuses the token on the FIRST attempt
+// (close code 4000). That refusal can be transient — Gladys still booting — and
+// the SDK keeps its reconnection loop armed for life (at the max delay) either
+// way. Exiting would throw that loop away, and the supervisor does not
+// recreate a container that stopped on its own: log, and let the SDK retry.
 gladys.connect().catch((err) => {
-  logger.error('Initial connection failed', err);
-  process.exit(1);
+  logger.error('Initial connection refused, the SDK keeps retrying', err);
 });
