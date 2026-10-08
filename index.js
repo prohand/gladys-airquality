@@ -176,7 +176,7 @@ gladys.onScanRequest(async () => {
 // like when it is broken. Only THAT device's location is read: the others
 // already hold their values.
 gladys.onDeviceCreated(async (device) => {
-  const blueprint = findBlueprintByDevice(gladys, config, device);
+  const blueprint = device ? findBlueprintByDevice(gladys, config, device) : undefined;
   if (typeof blueprint?.refreshDevice !== 'function') {
     logger.debug(`onDeviceCreated -> ${device?.external_id} is not ours, nothing to refresh`);
     return;

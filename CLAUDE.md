@@ -379,5 +379,6 @@ use a new SDK method rather than mocking the SDK itself. Tests that fire scene
 events must call `resetIndexMemory()` in `beforeEach` for the same reason: the
 last known classes are module-level. The location editor
 takes its outside world by injection (`getConfig`, `setConfig`, `resolvePlace`,
-`isCovered`, `findCreatedDevice`), so `test/locationEditor.test.js` exercises the
-buttons with no Gladys and no network at all.
+`isCovered`, `findCreatedDevice`, `listHouses`), so `test/locationEditor.test.js`
+exercises the buttons with no Gladys and no network at all — including two
+clicks at once, which a resolver answering late is enough to reproduce.
