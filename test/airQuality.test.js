@@ -61,6 +61,9 @@ function stubFetchWith(answer) {
   };
 }
 
+/** Whether a (decoded) URL asks for several points at once. */
+const isBatch = (url) => /latitude=[^&]*,/.test(decodeURIComponent(url));
+
 /** The `current` answer of one point, its PM10 telling the points apart. */
 function currentAt(pm10) {
   return { timezone_abbreviation: 'CEST', current: { time: '2026-08-06T12:00', pm10 } };
@@ -325,33 +328,76 @@ test('a point already cached is not asked again in a batch', async () => {
   assert.equal(lyon.concentrations.pm10, 22);
 });
 
-test('an answer that does not hold one entry per point is refused for every point', async () => {
+test('an answer that does not hold one entry per point falls back on one request per point', async () => {
   // Telling the points apart is done by position: a short answer would hand
-  // one town the air of another.
-  stubFetchWith(() => ({ body: [currentAt(11)] }));
+  // one town the air of another, so it is not used — each point is asked alone.
+  stubFetchWith((url) =>
+    isBatch(url)
+      ? { body: [currentAt(11)] }
+      : { body: currentAt(url.includes('latitude=47.2184') ? 11 : 22) },
+  );
   openMeteoEuropeProvider.prefetchConcentrations([NANTES, LYON]);
 
-  const outcomes = await Promise.allSettled([
+  const [nantes, lyon] = await Promise.all([
     openMeteoEuropeProvider.fetchConcentrations(NANTES),
     openMeteoEuropeProvider.fetchConcentrations(LYON),
   ]);
-  assert.equal(requestedUrls.length, 1);
-  for (const outcome of outcomes) {
-    assert.equal(outcome.status, 'rejected');
-    assert.match(outcome.reason.message, /1 point\(s\) for 2 asked/);
-  }
 
-  // Nothing of the failure is cached: each point is read again on its own.
-  stubFetch(currentAt(22));
-  assert.equal((await openMeteoEuropeProvider.fetchConcentrations(LYON)).concentrations.pm10, 22);
+  assert.equal(nantes.concentrations.pm10, 11);
+  assert.equal(lyon.concentrations.pm10, 22);
+  assert.equal(requestedUrls.length, 3, 'the batch, then ONE request per point');
+});
+
+test('a failed batch never silences the points that answer on their own', async () => {
+  // A point the API refuses (a 400) must not take the others down with it,
+  // at every cycle and every retry.
+  stubFetchWith((url) => {
+    if (isBatch(url) || url.includes('latitude=45.7679')) {
+      return { status: 400 };
+    }
+    return { body: currentAt(11) };
+  });
+  openMeteoEuropeProvider.prefetchConcentrations([NANTES, LYON]);
+
+  const [nantes, lyon] = await Promise.allSettled([
+    openMeteoEuropeProvider.fetchConcentrations(NANTES),
+    openMeteoEuropeProvider.fetchConcentrations(LYON),
+  ]);
+
+  assert.equal(nantes.status, 'fulfilled');
+  assert.equal(nantes.value.concentrations.pm10, 11);
+  assert.equal(lyon.status, 'rejected');
+  assert.match(lyon.reason.message, /400/);
+});
+
+test('a reader waiting during the fallback shares it, with no second request', async () => {
+  stubFetchWith((url) => (isBatch(url) ? { status: 503 } : { body: currentAt(11) }));
+  openMeteoEuropeProvider.prefetchConcentrations([NANTES, LYON]);
+
+  // Three readers of Nantes, all in flight while the batch fails.
+  await Promise.all([
+    openMeteoEuropeProvider.fetchConcentrations(NANTES),
+    openMeteoEuropeProvider.fetchConcentrations(NANTES),
+    openMeteoEuropeProvider.fetchConcentrations(LYON),
+    openMeteoEuropeProvider.fetchConcentrations(NANTES),
+  ]);
+
+  assert.equal(requestedUrls.length, 3, 'the batch, then ONE fallback per point');
+  const nantesAlone = requestedUrls.filter(
+    (url) => !isBatch(url) && decodeURIComponent(url).includes('latitude=47.2184'),
+  );
+  assert.equal(nantesAlone.length, 1, 'the waiting readers share the fallback');
 });
 
 test('a failed batch costs no unhandled rejection, even for a point nobody reads', async () => {
   stubFetchWith(() => ({ status: 503 }));
   openMeteoEuropeProvider.prefetchConcentrations([NANTES, LYON]);
-  // An unhandled rejection would fail the run; give it a turn to surface.
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(requestedUrls.length, 1);
+  // An unhandled rejection would fail the run; give it a few turns to surface
+  // (the batch, then the single-point fallbacks, all failing).
+  for (let turn = 0; turn < 10; turn += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  assert.equal(requestedUrls.length, 3, 'the batch, then one fallback per point');
 });
 
 test('the read-ahead groups the points by model: one request per domain', async () => {

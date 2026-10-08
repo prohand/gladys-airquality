@@ -193,11 +193,15 @@ Open-Meteo takes comma-separated latitudes/longitudes and answers an array, so
 share in the cache under that point's own key. The per-point reads that follow
 (`readAirQuality` → `fetchConcentrations`) are cache hits; nothing else changes.
 The answer is matched to the points BY POSITION, so one whose length is not
-the number of points asked is refused for all of them. Every refresh goes
-through `pollEach()` in `airQualityStation.js`, which prefetches first: the
-scheduled cycle, its retries, the scene action, the widget buttons. The
-consequence worth knowing: a failed batch fails every point of that domain,
-which is what an outage does anyway.
+the number of points asked is not used. Every refresh goes through
+`pollEach()` in `airQualityStation.js`, which prefetches first: the scheduled
+cycle, its retries, the scene action, the widget buttons. A batch that fails,
+whatever the reason (HTTP error, a point the API refuses, a wrong length), must
+not silence every point of the domain: each point falls back ONCE on the plain
+single-point request (`readOne`, the one `fetchConcentrations` makes), inside
+its own cache entry, so a reader already waiting shares that fallback and a
+point that fails alone fails alone. An outage therefore costs one batch plus
+one request per point.
 
 ### The index scale is the domain
 

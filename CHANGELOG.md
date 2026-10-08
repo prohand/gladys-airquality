@@ -15,7 +15,7 @@ All notable changes to this integration are documented here. The format follows
 - The Gladys houses are read through the SDK's `gladys.getHouses()` (0.14.0) instead of a hand-made call to the host API; a 403 is still answered with "re-install to grant the access".
 - A refused first connection no longer exits the container: the SDK keeps reconnecting (the token refusal can be transient while Gladys boots), and the integration logs it instead.
 - The configuration is taken from `gladys.config` on connection, which the SDK has just read, instead of a second `GET /config`.
-- All the locations of a refresh are read in one Open-Meteo request per CAMS domain instead of one request per location.
+- All the locations of a refresh are read in one Open-Meteo request per CAMS domain instead of one request per location; if that request fails, each location falls back on its own request, so one location the API refuses does not silence the others.
 - Reads of the same point made at the same time share one request: the cache holds the request in flight, drops a failed one at once and an expired one when it is next read.
 - Creating a device from the Discovery tab refreshes that device's location only, not every location.
 - The scene triggers forget the last classes of a removed location.

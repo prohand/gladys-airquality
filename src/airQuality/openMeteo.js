@@ -283,6 +283,9 @@ function createOpenMeteoProvider({ key, name, domain, supports }) {
     timezone: 'auto',
   });
 
+  /** The current hour of ONE point, through the plain single-point request. */
+  const readOne = async (point) => parseCurrent(await requestOpenMeteo(currentQuery([point])));
+
   return {
     key,
     name,
@@ -312,9 +315,7 @@ function createOpenMeteoProvider({ key, name, domain, supports }) {
      *   makes it readable from anywhere.
      */
     fetchConcentrations(point) {
-      return cachedRead(cache, cacheKey(point), async () =>
-        parseCurrent(await requestOpenMeteo(currentQuery([point]))),
-      );
+      return cachedRead(cache, cacheKey(point), () => readOne(point));
     },
 
     /**
@@ -326,9 +327,15 @@ function createOpenMeteoProvider({ key, name, domain, supports }) {
      * then one request per domain per refresh cycle instead of twenty. Nothing
      * is returned: each point's share of the answer is put in the cache under
      * that point's own key — in flight at once — so the per-point reads that
-     * follow are served from it, the cache keeps working point by point, and
-     * a batch that fails simply leaves each of them to fail (and be retried)
-     * on its own. Never throws.
+     * follow are served from it, and the cache keeps working point by point.
+     *
+     * A batch that fails — for ANY reason: an HTTP error, a point the API
+     * refuses, an answer of the wrong length — is not allowed to take every
+     * point down with it. Each point then falls back, ONCE, on the plain
+     * single-point request `fetchConcentrations` makes, inside its own cache
+     * entry: a reader already waiting on that entry shares the fallback
+     * instead of sending a second request, and a point that fails on its own
+     * fails alone. Never throws.
      *
      * A point already cached, or already in flight, is not asked again; a
      * lone point left is left to `fetchConcentrations`, whose request is the
@@ -360,8 +367,20 @@ function createOpenMeteoProvider({ key, name, domain, supports }) {
         }
         return body.map(parseCurrent);
       });
+      // Logged once for the batch, not once per point that falls back.
+      batch.catch((err) => {
+        logger.warn(
+          `Batched read of ${asked.length} points on ${domain} failed, reading them one by one`,
+          err,
+        );
+      });
       asked.forEach((point, index) => {
-        cachedRead(cache, cacheKey(point), () => batch.then((values) => values[index]));
+        cachedRead(cache, cacheKey(point), () =>
+          batch.then(
+            (values) => values[index],
+            () => readOne(point),
+          ),
+        );
       });
     },
 

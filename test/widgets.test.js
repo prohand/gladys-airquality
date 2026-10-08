@@ -310,23 +310,13 @@ test('the list card stops at the status cap, and says how many are left out', as
 });
 
 test('one location failing is one row saying so', async () => {
-  // The European points share one request, so what fails alone is a model:
-  // here the global one, which serves the second location.
-  const sydney = {
-    ...LYON,
-    id: 'loc-sydney01',
-    latitude: '-33.8688',
-    longitude: '151.2093',
-  };
+  // The batch gets a single body, not one per point: it is refused, and each
+  // point falls back on its own request — where Lyon fails alone.
   globalThis.fetch = async (url) =>
-    String(url).includes('domains=cams_global')
+    String(url).includes('latitude=45.7679')
       ? { ok: false, status: 503, json: async () => ({}) }
       : { ok: true, status: 200, json: async () => currentPayload() };
-  const content = await locations.getContent(
-    createFakeGladys(),
-    normalizeConfig({ locations: [NANTES, sydney] }),
-    { language: 'fr' },
-  );
+  const content = await locations.getContent(createFakeGladys(), config, { language: 'fr' });
   assertRenderedAsSent(content);
   assert.deepEqual(
     content.components[0].items.map((row) => row.value),
