@@ -120,10 +120,11 @@ into locations in one click. Three things hold it together:
   (`HOUSE_ACCESS_DENIED`) and answered with "re-install to grant it" — a retry
   fixes nothing. 4.85.0 is the version that opened the endpoint; the manifest
   floor is higher (see below) and `test/manifest.test.js` checks both.
-- **The call is made by hand**, with `GLADYS_HOST_API_URL` and
-  `GLADYS_INTEGRATION_TOKEN`, because the JS SDK does not wrap the endpoint
-  (0.12.0). Both are injected for the test, so `test/houses.test.js` never
-  touches the network.
+- **It is read through `gladys.getHouses()`** (SDK 0.14.0). It was a hand-made
+  `fetch` until the SDK wrapped it; a refusal now arrives as a `GladysApiError`
+  whose `status` is what `fetchHouses` turns into `HOUSE_ACCESS_DENIED`.
+  `index.js` injects `listHouses: () => fetchHouses(gladys)` into the editor,
+  and `test/houses.test.js` reads through `fakeGladys`, never the network.
 - **It is an import, not a sync.** The houses are read at the click; what comes
   out is ordinary locations. A house with `latitude: null` (never placed on the
   map) is REPORTED, never taken as 0 — that is the Gulf of Guinea. The whole

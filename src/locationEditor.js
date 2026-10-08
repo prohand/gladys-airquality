@@ -46,7 +46,7 @@ import {
   placeContext,
   resolvePlace as geocodePlace,
 } from './geocoding.js';
-import { fetchHouses, HOUSE_ACCESS_DENIED } from './houses.js';
+import { HOUSE_ACCESS_DENIED } from './houses.js';
 import {
   describeLocation,
   describeLocations,
@@ -82,7 +82,8 @@ const logger = createLogger({ name: 'locations' });
  * @param {(point: object) => boolean} [deps.isCovered] whether an air quality
  *   provider has data for a point
  * @param {typeof geocodePlace} [deps.resolvePlace] injected in tests
- * @param {typeof fetchHouses} [deps.listHouses] injected in tests
+ * @param {() => Promise<import('./houses.js').House[]>} [deps.listHouses] the
+ *   houses configured in Gladys (`fetchHouses` bound to the SDK in `index.js`)
  */
 export function createLocationEditor({
   getConfig,
@@ -91,7 +92,9 @@ export function createLocationEditor({
   findCreatedDevice = async () => null,
   isCovered = () => true,
   resolvePlace = geocodePlace,
-  listHouses = fetchHouses,
+  listHouses = async () => {
+    throw new Error('listHouses is not wired');
+  },
 }) {
   /**
    * Persist a new list, then re-publish the devices on it.

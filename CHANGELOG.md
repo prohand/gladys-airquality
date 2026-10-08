@@ -6,6 +6,10 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The Gladys houses are read through the SDK's `gladys.getHouses()` (0.14.0) instead of a hand-made call to the host API; a 403 is still answered with "re-install to grant the access".
+
 ## [2.2.0] - 2026-10-07
 
 - Maintenance release, no functional change.

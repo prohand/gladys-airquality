@@ -7,6 +7,7 @@
 //   - publishDiscoveredDevices      -> record the last published list
 //   - setConfig                     -> record the persisted config keys
 //   - getDevices                    -> the devices the user already created
+//   - getHouses                     -> the houses configured in Gladys
 //   - setConnectionStatus           -> record the reported status
 //   - publishSceneEvent             -> record the fired scene triggers
 //   - requestWidgetRefresh          -> record the widget freshness nudges
@@ -16,13 +17,19 @@
 // Extend it when you use a new SDK method, rather than mocking the SDK itself.
 // -----------------------------------------------------------------------------
 
-export function createFakeGladys({ devices = [], refuseSceneEvents = false } = {}) {
+export function createFakeGladys({
+  devices = [],
+  houses = [],
+  houseError = null,
+  refuseSceneEvents = false,
+} = {}) {
   const published = [];
   const discovered = [];
   const configs = [];
   const statuses = [];
   const sceneEvents = [];
   const widgetRefreshes = [];
+  let houseReads = 0;
 
   return {
     published,
@@ -31,6 +38,9 @@ export function createFakeGladys({ devices = [], refuseSceneEvents = false } = {
     statuses,
     sceneEvents,
     widgetRefreshes,
+    get houseReads() {
+      return houseReads;
+    },
 
     externalIds(type, platformId) {
       const device = `${type}:${platformId}`;
@@ -62,6 +72,16 @@ export function createFakeGladys({ devices = [], refuseSceneEvents = false } = {
 
     async getDevices() {
       return devices;
+    },
+
+    async getHouses() {
+      // `houseError` is a `GladysApiError` in the tests: what the SDK throws on
+      // a non-2xx answer of the host API, its HTTP status in `status`.
+      houseReads += 1;
+      if (houseError) {
+        throw houseError;
+      }
+      return houses;
     },
 
     async setConnectionStatus(connected, message) {

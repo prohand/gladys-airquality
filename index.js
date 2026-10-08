@@ -33,6 +33,7 @@ import {
   findBlueprintByDevice,
   locationDeviceIds,
 } from './src/devices/index.js';
+import { fetchHouses } from './src/houses.js';
 import { createLocationEditor } from './src/locationEditor.js';
 import { SCENE_ACTION_HANDLERS } from './src/scenes/index.js';
 import { WIDGETS } from './src/widgets/index.js';
@@ -138,10 +139,9 @@ async function republish() {
 // The location manager owns everything the user does with the configured
 // locations: the four actions that add, import, list and delete them. It is
 // given the capabilities it cannot have on its own — writing the configuration,
-// re-publishing the devices, asking whether a point is covered — and nothing
-// else, which is what makes it testable offline. Reading the Gladys houses is
-// its own module's default (src/houses.js): it needs no handle from here, only
-// the two environment variables the supervisor injects.
+// re-publishing the devices, asking whether a point is covered, reading the
+// Gladys houses through the SDK — and nothing else, which is what makes it
+// testable offline.
 const locationEditor = createLocationEditor({
   getConfig: () => config,
   async setConfig(patch) {
@@ -151,6 +151,9 @@ const locationEditor = createLocationEditor({
     config = normalizeConfig({ ...config, ...patch });
   },
   onLocationsChanged: republish,
+  // `GET /house`, wrapped by the SDK since 0.14.0; src/houses.js turns a 403
+  // into the "re-install to grant it" case.
+  listHouses: () => fetchHouses(gladys),
   // A point no provider answers for is refused rather than published as a
   // device that never holds a value. The global CAMS model covers the planet,
   // so in practice this only catches a coordinate that is not one.
