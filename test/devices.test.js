@@ -7,7 +7,7 @@
 // a change here and a silently empty Discovery tab.
 // -----------------------------------------------------------------------------
 
-import { test } from 'node:test';
+import { afterEach, beforeEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   DEVICE_FEATURE_CATEGORIES,
@@ -15,6 +15,7 @@ import {
   DEVICE_FEATURE_UNITS,
 } from '@gladysassistant/integration-sdk';
 import { allPollutants } from '../src/airQuality/index.js';
+import { clearAirQualityCache } from '../src/airQuality/openMeteo.js';
 import { INDEX_LABELS, INDEX_LEVELS, INDEX_MAX, INDEX_MIN } from '../src/airQuality/scale.js';
 import { normalizeConfig } from '../src/config.js';
 import {
@@ -24,11 +25,14 @@ import {
   concentrationFeatureId,
   DEVICE_TYPE,
   FEATURE,
+  RETRY_DELAYS_MS,
+  retryDelay,
   subIndexFeatureId,
   watchedLocations,
 } from '../src/devices/airQualityStation.js';
 import { buildDiscoveredDevices, findBlueprintByDevice } from '../src/devices/index.js';
 import { LOCATIONS_KEY } from '../src/locations.js';
+import { resetIndexMemory } from '../src/scenes/indexEvents.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
 
 const NANTES = {
@@ -50,6 +54,52 @@ const SYDNEY = {
 
 function configWith(...locations) {
   return normalizeConfig({ [LOCATIONS_KEY]: locations });
+}
+
+const realFetch = globalThis.fetch;
+
+beforeEach(() => {
+  clearAirQualityCache();
+  resetIndexMemory();
+});
+
+afterEach(() => {
+  globalThis.fetch = realFetch;
+});
+
+/**
+ * Open-Meteo, with the global model down while `down.global` holds: a status,
+ * optionally with a Retry-After. NANTES is read on the European model and
+ * SYDNEY on the global one, so each is ONE request of its own.
+ */
+function stubOpenMeteo(down = {}) {
+  const urls = [];
+  globalThis.fetch = async (url) => {
+    urls.push(decodeURIComponent(String(url)));
+    const failure = String(url).includes('cams_global') ? down.global : null;
+    if (failure) {
+      return {
+        ok: false,
+        status: failure.status,
+        headers: new Headers(failure.retryAfter ? { 'Retry-After': failure.retryAfter } : {}),
+        json: async () => ({}),
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => ({ current: { time: '2026-08-06T12:00', pm10: 18, ozone: 40 } }),
+    };
+  };
+  return urls;
+}
+
+/** Let the refresh cycle's promises run (setImmediate is not mocked). */
+async function settle() {
+  for (let turn = 0; turn < 20; turn += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
 }
 
 test('one device is published per usable, covered location', () => {
@@ -398,4 +448,136 @@ test('the test action says so when no location is configured', async () => {
     config: configWith(),
   });
   assert.match(message.fr, /Aucun lieu/);
+});
+
+// --- The refresh timer and its retries ---------------------------------------
+
+test('a location that failed is tried again after 30 s, and only that one', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval'] });
+  const down = { global: { status: 502 } };
+  const urls = stubOpenMeteo(down);
+  const gladys = createFakeGladys();
+  const stop = airQualityStation.startPolling(gladys, configWith(NANTES, SYDNEY));
+
+  await settle();
+  assert.equal(urls.length, 2, 'one request per model');
+  assert.equal(gladys.statuses.at(-1).connected, false);
+
+  down.global = null;
+  t.mock.timers.tick(RETRY_DELAYS_MS[0] - 1);
+  await settle();
+  assert.equal(urls.length, 2, 'not before 30 s');
+
+  t.mock.timers.tick(1);
+  await settle();
+  assert.equal(urls.length, 3);
+  assert.match(urls[2], /cams_global/, 'the location that worked is not read again');
+  assert.equal(gladys.statuses.at(-1).connected, true, 'the retry clears the status');
+  stop();
+});
+
+test('a location still failing is tried once more after 2 min, then waits for the next cycle', async (t) => {
+  // Date too: the next cycle must find the cache expired, as it would be.
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'] });
+  const urls = stubOpenMeteo({ global: { status: 503 } });
+  const config = configWith(NANTES, SYDNEY);
+  const stop = airQualityStation.startPolling(createFakeGladys(), config);
+  await settle();
+
+  t.mock.timers.tick(RETRY_DELAYS_MS[0]);
+  await settle();
+  assert.equal(urls.length, 3);
+
+  t.mock.timers.tick(RETRY_DELAYS_MS[1]);
+  await settle();
+  assert.equal(urls.length, 4);
+
+  // No third retry: hammering a service that is really down buys nothing.
+  t.mock.timers.tick(10 * 60 * 1000);
+  await settle();
+  assert.equal(urls.length, 4);
+
+  // The next scheduled cycle reads every location again.
+  t.mock.timers.tick(
+    config.poll_frequency * 1000 - RETRY_DELAYS_MS[0] - RETRY_DELAYS_MS[1] - 10 * 60 * 1000,
+  );
+  await settle();
+  assert.equal(urls.length, 6);
+  stop();
+});
+
+test('stopping the timer cancels a pending retry', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval'] });
+  const urls = stubOpenMeteo({ global: { status: 502 } });
+  const stop = airQualityStation.startPolling(createFakeGladys(), configWith(NANTES, SYDNEY));
+  await settle();
+
+  stop();
+  t.mock.timers.tick(RETRY_DELAYS_MS[0]);
+  await settle();
+  assert.equal(urls.length, 2, 'a republish or a disconnection leaves no retry behind');
+});
+
+test('a throttled location waits as long as the server asked', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval'] });
+  const down = { global: { status: 429, retryAfter: '300' } };
+  const urls = stubOpenMeteo(down);
+  const stop = airQualityStation.startPolling(createFakeGladys(), configWith(NANTES, SYDNEY));
+  await settle();
+
+  t.mock.timers.tick(RETRY_DELAYS_MS[0]);
+  await settle();
+  assert.equal(urls.length, 2, 'not after 30 s: the server said 300');
+
+  down.global = null;
+  t.mock.timers.tick(300_000 - RETRY_DELAYS_MS[0]);
+  await settle();
+  assert.equal(urls.length, 3);
+  stop();
+});
+
+test('a retry that would land after the next cycle is not scheduled', () => {
+  const failures = [{ error: { retryAfterMs: 2 * 3600 * 1000 } }, { error: new Error('x') }];
+  assert.equal(retryDelay(failures, 0), 2 * 3600 * 1000, 'the longest wait asked wins');
+  assert.equal(retryDelay([{ error: new Error('x') }], 1), RETRY_DELAYS_MS[1]);
+});
+
+test('the refresh cycle itself never throws, and reports what failed', async () => {
+  stubOpenMeteo({ global: { status: 502 } });
+  const gladys = createFakeGladys();
+  const failures = await airQualityStation.refresh(gladys, configWith(NANTES, SYDNEY));
+  assert.deepEqual(
+    failures.map((failure) => failure.location.id),
+    [SYDNEY.id],
+  );
+  assert.match(gladys.statuses.at(-1).message.fr, /Antipodes : le rafraîchissement/);
+});
+
+// --- A device just created ---------------------------------------------------
+
+test('a device just created refreshes its own location, not every one', async () => {
+  const urls = stubOpenMeteo();
+  const gladys = createFakeGladys();
+  const refreshed = await airQualityStation.refreshDevice(
+    gladys,
+    configWith(NANTES, SYDNEY),
+    `${DEVICE_TYPE}:${NANTES.id}`,
+  );
+
+  assert.equal(refreshed, true);
+  assert.equal(urls.length, 1);
+  assert.match(urls[0], /cams_europe/);
+  assert.ok(gladys.published.length > 0);
+  assert.ok(gladys.published.every((state) => state.featureExternalId.includes(NANTES.id)));
+});
+
+test('a device no location watches refreshes nothing, and does not throw', async () => {
+  const urls = stubOpenMeteo();
+  const refreshed = await airQualityStation.refreshDevice(
+    createFakeGladys(),
+    configWith(NANTES),
+    `${DEVICE_TYPE}:loc-gone`,
+  );
+  assert.equal(refreshed, false);
+  assert.equal(urls.length, 0);
 });

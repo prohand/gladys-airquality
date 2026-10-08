@@ -2,7 +2,7 @@
   "name": "gladys-airquality",
   "version": "2.2.0",
   "private": true,
-  "description": "Gladys Assistant external integration exposing the air quality index of the locations you choose, by postal code, from the Copernicus CAMS European data.",
+  "description": "Gladys Assistant external integration exposing the air quality index of locations anywhere in the world, added by town name, from your Gladys houses or by coordinates, from the open Copernicus CAMS data (European model in Europe, global model elsewhere) served by Open-Meteo.",
   "type": "module",
   "main": "index.js",
   "scripts": {
@@ -13,7 +13,7 @@
     "test": "node --test"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "dependencies": {
     "@gladysassistant/integration-sdk": "^0.14.0"

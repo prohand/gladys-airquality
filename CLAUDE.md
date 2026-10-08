@@ -29,7 +29,10 @@ npm run format                               # prettier --write
 ```
 
 CI runs `format:check`, then `lint`, then `test`, on Node 24 (the Dockerfile's
-runtime). Run all three before pushing — a formatting diff fails the build.
+runtime, and `engines.node` in `package.json`). Run all three before pushing — a
+formatting diff fails the build. The image installs with `npm ci --omit=dev
+--ignore-scripts` from the committed lock, declares no volume (nothing is ever
+written to disk), and Dependabot watches npm, the Actions and the base image.
 
 ## Architecture
 
@@ -65,6 +68,19 @@ change it (`add_location`, `import_houses`, `list_locations`,
 - **Coordinates travel as TEXT** (`src/coordinates.js`). `Number('')` is 0 — a
   valid latitude — and a `number` field is an `<input type="number">` the browser
   sanitizes in its own locale, so a French one silently drops `48.8566`.
+- **The editor's actions run one at a time** (`exclusive`, a promise queue):
+  each reads the list, waits on the network (geocoder, houses, device list),
+  then writes. Two clicks in the same second would otherwise both write a list
+  built from the one of before, and one location would be lost. Each action
+  also RE-READS `getConfig()` right before `commit`, so a configuration saved
+  meanwhile is not overwritten.
+- **An id generated at load is written back.** `normalizeLocations` gives an
+  entry stored without an id (hand-edited, or very old) a random one — a new
+  one at every read, i.e. a new device `external_id`. `locationsMissingIds()`
+  detects it and `persistGeneratedIds()` writes the normalized list once,
+  through the same queue, when a configuration is loaded (`connected`,
+  `onConfigUpdated`) and BEFORE the devices are published. The id is never
+  derived from the entry instead: its name and label are what the user edits.
 - **Positions, not names, are what a user can pick.** A manifest `select` has
   static options, so the delete dropdown offers `1..MAX_LOCATIONS` and the
   listing action is what maps a number to a location. `MAX_LOCATIONS` and the
@@ -82,6 +98,11 @@ The SDK acks a thrown handler error as a plain `error: e.message` string, which
 loses the multi-language message. Every expected, user-facing outcome — a town
 nobody knows, an ambiguous name, half a coordinate pair — is
 **returned** as an `{ en, fr }` object; only unexpected failures throw. That
+includes a list SAVED whose devices could not be published: `commit()` returns
+the reason instead of rethrowing it, and the action answers "saved, but the
+publication failed: <reason>" (`savedButNotPublished`) — a bare error would make
+the user add the location a second time. A failed `setConfig` still throws:
+nothing was saved. That
 message is also the only thing the Configuration screen displays of what this
 integration has to say, hence the listing being an action too.
 
@@ -120,10 +141,11 @@ into locations in one click. Three things hold it together:
   (`HOUSE_ACCESS_DENIED`) and answered with "re-install to grant it" — a retry
   fixes nothing. 4.85.0 is the version that opened the endpoint; the manifest
   floor is higher (see below) and `test/manifest.test.js` checks both.
-- **The call is made by hand**, with `GLADYS_HOST_API_URL` and
-  `GLADYS_INTEGRATION_TOKEN`, because the JS SDK does not wrap the endpoint
-  (0.12.0). Both are injected for the test, so `test/houses.test.js` never
-  touches the network.
+- **It is read through `gladys.getHouses()`** (SDK 0.14.0). It was a hand-made
+  `fetch` until the SDK wrapped it; a refusal now arrives as a `GladysApiError`
+  whose `status` is what `fetchHouses` turns into `HOUSE_ACCESS_DENIED`.
+  `index.js` injects `listHouses: () => fetchHouses(gladys)` into the editor,
+  and `test/houses.test.js` reads through `fakeGladys`, never the network.
 - **It is an import, not a sync.** The houses are read at the click; what comes
   out is ordinary locations. A house with `latitude: null` (never placed on the
   map) is REPORTED, never taken as 0 — that is the Gulf of Guinea. The whole
@@ -149,8 +171,9 @@ they win over the name when both are given.
 `{ key, name, pollutants, supports(point), fetchConcentrations(point) }`, plus
 the OPTIONAL `fetchForecast(point)` the station widget draws its curve from (a
 second request with its own cache — the refresh cycle only needs the current
-hour; a provider without it makes the card drop its chart, not fail), first
-match wins, so callers never name an implementation. Two are registered, and the
+hour; a provider without it makes the card drop its chart, not fail), and the
+OPTIONAL `prefetchConcentrations(points)` (see below); first match wins, so
+callers never name an implementation. Two are registered, and the
 order IS the routing: `openMeteoEuropeProvider` (CAMS European, ~11 km, inside a
 bounding box) then `openMeteoGlobalProvider` (CAMS global, ~40 km, every point
 on Earth). A national source goes BEFORE both; nothing goes after the global one,
@@ -160,6 +183,25 @@ Each provider asks for its `domains` explicitly — never the API's `auto` blend
 and the domain is part of the cache key: the two models are not coupled, and a
 location whose series switched between them would be two datasets under one
 chart.
+
+The cache stores the PROMISE from the moment a request leaves (`cachedRead`),
+so concurrent reads of one point share one request; a rejected one is dropped
+at once, an expired one when it is next read. Batching sits on top of it:
+Open-Meteo takes comma-separated latitudes/longitudes and answers an array, so
+`prefetchAirQuality(points)` groups the points by provider and each provider's
+`prefetchConcentrations` sends ONE request per domain, putting each point's
+share in the cache under that point's own key. The per-point reads that follow
+(`readAirQuality` → `fetchConcentrations`) are cache hits; nothing else changes.
+The answer is matched to the points BY POSITION, so one whose length is not
+the number of points asked is not used. Every refresh goes through
+`pollEach()` in `airQualityStation.js`, which prefetches first: the scheduled
+cycle, its retries, the scene action, the widget buttons. A batch that fails,
+whatever the reason (HTTP error, a point the API refuses, a wrong length), must
+not silence every point of the domain: each point falls back ONCE on the plain
+single-point request (`readOne`, the one `fetchConcentrations` makes), inside
+its own cache entry, so a reader already waiting shares that fallback and a
+point that fails alone fails alone. An outage therefore costs one batch plus
+one request per point.
 
 ### The index scale is the domain
 
@@ -196,6 +238,8 @@ stores the key, so a renamed key is a removed one.
   Nothing fires on the first reading after a start ("unknown → 4" is not a
   change), a pollutant with no value fires nothing (missing data is not a return
   to class 1), and a refused event never takes the refresh cycle down. The
+  memory of the last classes is pruned to the current list
+  (`forgetRemovedLocations`) whenever it changes. The
   classes travel as STRINGS: a filter is a `multi_select`, whose option values
   are strings, and the core compares them with the event value.
 - **`src/scenes/sceneActions.js`** — a scene action is NEVER a condition:
@@ -260,8 +304,11 @@ discovery payload is validated by
 - **`poll_frequency` is an ENUM in MILLISECONDS capped at one minute.** Anything
   else is rejected and the **whole batch** is refused. Hence the self-driven
   timer: the devices declare no `poll_frequency`, `startPolling` refreshes
-  immediately then every `poll_frequency` seconds, floored at
-  `MIN_REFRESH_SECONDS`.
+  immediately then every `poll_frequency` seconds — kept within the manifest
+  bounds (900-86400 s) by `normalizeConfig`, the one place that clamps it. A
+  location that failed is retried on its own after `RETRY_DELAYS_MS` (30 s,
+  then 2 min; longer when a 429 carries `Retry-After`, skipped when that lands
+  after the next cycle), and the cleanup cancels a pending retry.
 - **Every feature needs an explicit numeric `min` and `max`** —
   `t_device_feature.min/max` are `NOT NULL` with no default, text features
   included. Publishing passes, then the user's "add device" click fails.
@@ -272,7 +319,7 @@ discovery payload is validated by
   `pm25-sensor`/`decimal`, `pm10-sensor`/`decimal`, `text`/`text`, and the three
   gas concentration categories `no2-sensor`/`o3-sensor`/`so2-sensor`, all
   `decimal`. Those three were **newer than the SDK** when they were adopted, so
-  `airQualityStation.js` spells the strings out; 0.12.0 exports `NO2_SENSOR`,
+  `airQualityStation.js` spells the strings out; 0.12.0+ exports `NO2_SENSOR`,
   `O3_SENSOR` and `SO2_SENSOR` but there is nothing to change — the flat list
   the core validates against is the contract, the SDK constant is a
   convenience. `no2-matter-index-sensor` is a trap: despite the name it is an
@@ -283,7 +330,8 @@ discovery payload is validated by
   reports the reason through `setConnectionStatus`.
 - **The core silently drops states for a feature that does not exist yet.**
   States published before the user adds the device go nowhere, which is why
-  `index.js` listens to `onDeviceCreated` and refreshes immediately.
+  `index.js` listens to `onDeviceCreated` and refreshes THAT device's location
+  immediately (`airQualityStation.refreshDevice`), not every location.
 - **A newline does not survive the Configuration screen** (`white-space: normal`
   on a plain `<div class="alert">`), and markup is escaped. Hence
   `LOCATION_LINE_MARKER` opening every entry of a list, and the Unicode bold of
@@ -314,7 +362,8 @@ discovery payload is validated by
   only catches what is not a point (a coordinate out of range, or none).
 - **A refresh cycle never throws.** A rejection inside a timer callback would
   take the container down; one location failing must not silence the others.
-  That includes the scene events it fires and the widget nudge it sends.
+  That includes the scene events it fires, the widget nudge it sends and the
+  retries it schedules.
 - **A scene event is fired once per transition**, never on the first reading
   after a start, never for missing data.
 
@@ -323,12 +372,17 @@ discovery payload is validated by
 Tests never touch the network: `globalThis.fetch` is stubbed per-file and
 restored in `afterEach`. `src/airQuality/openMeteo.js` keeps a module-level TTL
 cache, so tests that count requests must call `clearAirQualityCache()` in
-`beforeEach` — otherwise state leaks between tests.
+`beforeEach` — otherwise state leaks between tests. A stub answering several
+locations of one domain must answer an ARRAY when the `latitude` parameter
+holds a comma: the refresh paths batch. The retry timer is tested with
+`t.mock.timers` (`setTimeout`, `setInterval`, and `Date` when the cache must
+expire); `setImmediate` stays real to let the cycle's promises run.
 
 `test/helpers/fakeGladys.js` is the in-memory SDK stand-in; extend it when you
 use a new SDK method rather than mocking the SDK itself. Tests that fire scene
 events must call `resetIndexMemory()` in `beforeEach` for the same reason: the
 last known classes are module-level. The location editor
 takes its outside world by injection (`getConfig`, `setConfig`, `resolvePlace`,
-`isCovered`, `findCreatedDevice`), so `test/locationEditor.test.js` exercises the
-buttons with no Gladys and no network at all.
+`isCovered`, `findCreatedDevice`, `listHouses`), so `test/locationEditor.test.js`
+exercises the buttons with no Gladys and no network at all — including two
+clicks at once, which a resolver answering late is enough to reproduce.

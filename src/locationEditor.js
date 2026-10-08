@@ -33,6 +33,13 @@
 // ambiguous name, a pair of coordinates that is not a point — is RETURNED as
 // `{ en, fr }`; only unexpected failures throw.
 //
+// WHY THE ACTIONS RUN ONE AT A TIME. Each of them reads the list, waits on the
+// network (the geocoder, the houses, the device list), then writes a new list.
+// Two clicks in the same second would both read the list of before, and the
+// second write would silently drop the first one's location. So they are
+// queued (`exclusive`), and each one RE-READS the list right before it writes:
+// a configuration saved meanwhile is not overwritten either.
+//
 // Everything the outside world provides is injected (`getConfig`, `setConfig`,
 // `resolvePlace`, `isCovered`, `listHouses`), so the whole set is testable
 // without a Gladys server nor a network: see `test/locationEditor.test.js`.
@@ -46,7 +53,8 @@ import {
   placeContext,
   resolvePlace as geocodePlace,
 } from './geocoding.js';
-import { fetchHouses, HOUSE_ACCESS_DENIED } from './houses.js';
+import { HOUSE_ACCESS_DENIED } from './houses.js';
+import { shortReason } from './reason.js';
 import {
   describeLocation,
   describeLocations,
@@ -57,6 +65,7 @@ import {
   LOCATION_LINE_SEPARATOR,
   LOCATIONS_KEY,
   locationAtPosition,
+  locationsMissingIds,
   locationDetail,
   locationLine,
   MAX_LOCATIONS,
@@ -68,6 +77,29 @@ import {
 } from './locations.js';
 
 const logger = createLogger({ name: 'locations' });
+
+/** What every action answers once the list is full. */
+const CAP_REACHED = {
+  en: `Maximum ${MAX_LOCATIONS} locations. Delete one first.`,
+  fr: `Maximum ${MAX_LOCATIONS} lieux. Supprimez-en un d'abord.`,
+};
+
+/**
+ * A change that WAS saved, but whose devices could not be published.
+ *
+ * The list is the source of truth and it holds the change: saying "failed"
+ * would make the user click again and add the location twice; saying nothing
+ * would leave them looking for a device the Discovery tab does not show.
+ * @param {{ en: string, fr: string }} saved what was saved, as a clause
+ * @param {string} reason why the publication failed
+ * @param {string} [details] appended as it is: the lines of a list
+ */
+function savedButNotPublished(saved, reason, details = '') {
+  return {
+    en: `${saved.en}, but publishing the devices to the Discovery tab failed: ${reason}. The change is saved; the Discovery tab will follow at the next successful publication (a scan, a restart or another change).${details}`,
+    fr: `${saved.fr}, mais la publication des appareils dans l'onglet Découverte a échoué : ${reason}. La modification est enregistrée ; l'onglet Découverte suivra à la prochaine publication réussie (une recherche, un redémarrage ou une autre modification).${details}`,
+  };
+}
 
 /**
  * Build the location manager.
@@ -82,7 +114,8 @@ const logger = createLogger({ name: 'locations' });
  * @param {(point: object) => boolean} [deps.isCovered] whether an air quality
  *   provider has data for a point
  * @param {typeof geocodePlace} [deps.resolvePlace] injected in tests
- * @param {typeof fetchHouses} [deps.listHouses] injected in tests
+ * @param {() => Promise<import('./houses.js').House[]>} [deps.listHouses] the
+ *   houses configured in Gladys (`fetchHouses` bound to the SDK in `index.js`)
  */
 export function createLocationEditor({
   getConfig,
@@ -91,15 +124,45 @@ export function createLocationEditor({
   findCreatedDevice = async () => null,
   isCovered = () => true,
   resolvePlace = geocodePlace,
-  listHouses = fetchHouses,
+  listHouses = async () => {
+    throw new Error('listHouses is not wired');
+  },
 }) {
+  // Tail of the queue the list-changing work runs in, one task at a time.
+  let queue = Promise.resolve();
+
+  /**
+   * Run `task` once every task queued before it has settled, whatever their
+   * outcome: a failed action must not block the next click.
+   * @template T
+   * @param {() => Promise<T>} task
+   * @returns {Promise<T>}
+   */
+  function exclusive(task) {
+    const run = queue.then(task, task);
+    queue = run.catch(() => {});
+    return run;
+  }
+
   /**
    * Persist a new list, then re-publish the devices on it.
+   *
+   * A failed write throws: nothing was saved, and that is an unexpected
+   * failure. A failed PUBLICATION does not: the list is saved, so the caller
+   * answers that it is, and why the Discovery tab does not show it yet.
    * @param {Array<object>} locations the new list
+   * @returns {Promise<string|null>} why the devices could not be published, or
+   *   null when everything went through
    */
   async function commit(locations) {
     await setConfig({ [LOCATIONS_KEY]: serializeLocations(locations) });
-    await onLocationsChanged();
+    try {
+      await onLocationsChanged();
+      return null;
+    } catch (err) {
+      logger.error('The locations are saved, but the devices could not be published', err);
+      return shortReason(err);
+    }
   }
 
   /**
@@ -196,338 +259,414 @@ export function createLocationEditor({
     }
   }
 
-  return {
-    // --- Manifest actions ---------------------------------------------------
-    actions: {
-      /**
-       * Add a location, from a place name or straight from a point.
-       *
-       * The place name is the normal way in — nobody knows their town's
-       * coordinates by heart. The two coordinate fields are the way out of the
-       * cases the geocoder cannot serve: a hamlet it does not know, or a point
-       * read off a map. Given both, they WIN over the name, which is then only
-       * kept as the label of the location.
-       */
-      async add_location(fields = {}) {
-        const query = String(fields.place ?? '').trim();
-        logger.info(
-          `Action add_location <- ${fields.name ?? ''} / ${query} / ` +
-            `${fields.latitude ?? ''},${fields.longitude ?? ''}`,
+  // --- Manifest actions ---------------------------------------------------
+  // The handlers as written; `actions` below is what is registered, each one
+  // queued behind the others.
+  const handlers = {
+    /**
+     * Add a location, from a place name or straight from a point.
+     *
+     * The place name is the normal way in — nobody knows their town's
+     * coordinates by heart. The two coordinate fields are the way out of the
+     * cases the geocoder cannot serve: a hamlet it does not know, or a point
+     * read off a map. Given both, they WIN over the name, which is then only
+     * kept as the label of the location.
+     */
+    async add_location(fields = {}) {
+      const query = String(fields.place ?? '').trim();
+      logger.info(
+        `Action add_location <- ${fields.name ?? ''} / ${query} / ` +
+          `${fields.latitude ?? ''},${fields.longitude ?? ''}`,
+      );
+
+      const typed = typedPoint(fields);
+      if (typed.problem) {
+        return typed.problem;
+      }
+      if (!typed.point && query === '') {
+        return {
+          en: 'Type the town of the location to add, anywhere in the world, or its latitude and its longitude.',
+          fr: "Saisissez la commune du lieu à ajouter, n'importe où dans le monde, ou sa latitude et sa longitude.",
+        };
+      }
+
+      // Checked before anything is queried: a full list needs no geocoding.
+      const { locations, language } = getConfig();
+      if (locations.length >= MAX_LOCATIONS) {
+        return CAP_REACHED;
+      }
+
+      // A typed point is used as it is: the user gave the answer the geocoder
+      // would only have guessed at.
+      const geocoded = typed.point ? null : await geocode(query, language);
+      if (geocoded?.problem) {
+        return geocoded.problem;
+      }
+      const point = typed.point ?? geocoded.point;
+
+      // The global model covers the planet, so this only ever refuses what is
+      // not a point at all — but it is checked HERE rather than published as a
+      // device that never holds a value.
+      if (!isCovered(point)) {
+        return {
+          en: `No air quality source covers ${formatPoint(point)}. This location was not added.`,
+          fr: `Aucune source de qualité de l'air ne couvre ${formatPoint(point)}. Ce lieu n'a pas été ajouté.`,
+        };
+      }
+
+      // RE-READ: the geocoder took its time, and a configuration saved
+      // meanwhile must not be overwritten by the list of before.
+      const current = getConfig().locations;
+      if (current.length >= MAX_LOCATIONS) {
+        return CAP_REACHED;
+      }
+
+      // The forecast is read on a grid cell kilometres wide: two devices on
+      // the same point would report the same numbers under two names.
+      const duplicate = findLocationAtPoint(current, point);
+      if (duplicate) {
+        return {
+          en: `That point is already watched by location ${positionOf(current, duplicate.id)} "${duplicate.name}".`,
+          fr: `Ce point est déjà surveillé par le lieu ${positionOf(current, duplicate.id)} « ${duplicate.name} ».`,
+        };
+      }
+
+      // A location the user did not name is named after the place it is in —
+      // "Qualité de l'air — Montauban" beats two decimals. A typed point with
+      // no name at all falls back to its coordinates.
+      const name =
+        String(fields.name ?? '').trim() || geocoded?.place?.name || query || formatPoint(point);
+      // What the listing shows after the name: where the point actually is.
+      // A geocoded place carries its region and country; a typed point keeps
+      // whatever the user wrote in the place field, and nothing when they
+      // wrote nothing (the geocoder has no reverse endpoint to ask).
+      const addressLabel = geocoded?.place
+        ? [geocoded.place.name, placeContext(geocoded.place)].filter(Boolean).join(', ')
+        : query;
+
+      const id = newLocationId(current);
+      const notPublished = await commit(
+        upsertLocation(current, { id, name, address_label: addressLabel, ...point }),
+      );
+
+      const saved = findLocationById(getConfig().locations, id);
+      const position = positionOf(getConfig().locations, id);
+      if (notPublished) {
+        return savedButNotPublished(
+          {
+            en: `Location ${position} "${name}" saved (${describeLocation(saved)})`,
+            fr: `Lieu ${position} « ${name} » enregistré (${describeLocation(saved)})`,
+          },
+          notPublished,
         );
-
-        const typed = typedPoint(fields);
-        if (typed.problem) {
-          return typed.problem;
-        }
-        if (!typed.point && query === '') {
-          return {
-            en: 'Type the town of the location to add, anywhere in the world, or its latitude and its longitude.',
-            fr: "Saisissez la commune du lieu à ajouter, n'importe où dans le monde, ou sa latitude et sa longitude.",
-          };
-        }
-
-        const { locations, language } = getConfig();
-        if (locations.length >= MAX_LOCATIONS) {
-          return {
-            en: `Maximum ${MAX_LOCATIONS} locations. Delete one first.`,
-            fr: `Maximum ${MAX_LOCATIONS} lieux. Supprimez-en un d'abord.`,
-          };
-        }
-
-        // A typed point is used as it is: the user gave the answer the geocoder
-        // would only have guessed at.
-        const geocoded = typed.point ? null : await geocode(query, language);
-        if (geocoded?.problem) {
-          return geocoded.problem;
-        }
-        const point = typed.point ?? geocoded.point;
-
-        // The global model covers the planet, so this only ever refuses what is
-        // not a point at all — but it is checked HERE rather than published as a
-        // device that never holds a value.
-        if (!isCovered(point)) {
-          return {
-            en: `No air quality source covers ${formatPoint(point)}. This location was not added.`,
-            fr: `Aucune source de qualité de l'air ne couvre ${formatPoint(point)}. Ce lieu n'a pas été ajouté.`,
-          };
-        }
-
-        // The forecast is read on a grid cell kilometres wide: two devices on
-        // the same point would report the same numbers under two names.
-        const duplicate = findLocationAtPoint(locations, point);
-        if (duplicate) {
-          return {
-            en: `That point is already watched by location ${positionOf(locations, duplicate.id)} "${duplicate.name}".`,
-            fr: `Ce point est déjà surveillé par le lieu ${positionOf(locations, duplicate.id)} « ${duplicate.name} ».`,
-          };
-        }
-
-        // A location the user did not name is named after the place it is in —
-        // "Qualité de l'air — Montauban" beats two decimals. A typed point with
-        // no name at all falls back to its coordinates.
-        const name =
-          String(fields.name ?? '').trim() || geocoded?.place?.name || query || formatPoint(point);
-        // What the listing shows after the name: where the point actually is.
-        // A geocoded place carries its region and country; a typed point keeps
-        // whatever the user wrote in the place field, and nothing when they
-        // wrote nothing (the geocoder has no reverse endpoint to ask).
-        const addressLabel = geocoded?.place
-          ? [geocoded.place.name, placeContext(geocoded.place)].filter(Boolean).join(', ')
-          : query;
-
-        const id = newLocationId(locations);
-        await commit(
-          upsertLocation(locations, { id, name, address_label: addressLabel, ...point }),
-        );
-
-        const saved = findLocationById(getConfig().locations, id);
-        const position = positionOf(getConfig().locations, id);
-        return {
-          en: `Location ${position} "${name}" added: ${describeLocation(saved)}. Add its device from the Discovery tab; "Show my locations" lists them all.`,
-          fr: `Lieu ${position} « ${name} » ajouté : ${describeLocation(saved)}. Ajoutez son appareil depuis l'onglet Découverte ; « Afficher mes lieux » les liste tous.`,
-        };
-      },
-
-      /**
-       * Add every house configured in Gladys that is not watched yet, in one
-       * click.
-       *
-       * WHY IT EXISTS. The user has already placed their home on a map, in
-       * Gladys. Making them type their own town again, in another form, to
-       * watch the air above that same roof is asking twice for something the
-       * core will hand over — see `src/houses.js` for the permission that makes
-       * it readable.
-       *
-       * WHAT IT IS NOT. It is not a sync: the houses are READ once, when the
-       * button is clicked, and what comes out is ordinary locations the user
-       * renames and deletes like any other. A house moved in Gladys afterwards
-       * leaves its location where it was — the same rule as everywhere else
-       * here, a point that moved is another location.
-       *
-       * Nothing is written unless something is actually added, and everything
-       * skipped is named: a button that answers "0 added" without saying why is
-       * a button the user clicks again.
-       */
-      async import_houses() {
-        logger.info('Action import_houses');
-
-        let houses;
-        try {
-          houses = await listHouses();
-        } catch (err) {
-          if (err?.code === HOUSE_ACCESS_DENIED) {
-            // Not an outage: the INSTALLED manifest never asked for the
-            // permission, and only re-installing the integration grants it.
-            logger.warn('The house coordinates are not granted to this integration');
-            return {
-              en: 'Gladys refuses to share the coordinates of your houses with this integration. That access is granted when the integration is installed: update it to a version that asks for it, or remove and re-install it, and accept the request shown on the install screen. Meanwhile "Add a location" works the same way with a town name.',
-              fr: "Gladys refuse de partager les coordonnées de vos maisons avec cette intégration. Cet accès s'accorde à l'installation : mettez l'intégration à jour vers une version qui le demande, ou supprimez-la et réinstallez-la en acceptant la demande affichée sur l'écran d'installation. En attendant, « Ajouter un lieu » fait la même chose avec un nom de commune.",
-            };
-          }
-          logger.warn('Could not read the houses configured in Gladys', err);
-          const reason = String(err?.message ?? err).slice(0, 150);
-          return {
-            en: `Could not read the houses configured in Gladys: ${reason}. Add the location by its town name instead.`,
-            fr: `Impossible de lire les maisons configurées dans Gladys : ${reason}. Ajoutez plutôt le lieu par son nom de commune.`,
-          };
-        }
-
-        if (houses.length === 0) {
-          return {
-            en: 'Gladys has no house configured. Create one in Settings > Houses, place it on the map, then click this button again.',
-            fr: 'Gladys ne contient aucune maison. Créez-en une dans Réglages > Maisons, placez-la sur la carte, puis relancez cette action.',
-          };
-        }
-
-        // The whole import is computed against ONE list and written ONCE: a
-        // setConfig per house would re-publish the Discovery tab as many times,
-        // and a failure halfway would leave half an import behind.
-        const { locations } = getConfig();
-        let updated = locations;
-        const addedIds = [];
-        const duplicates = [];
-        const unlocated = [];
-        const uncovered = [];
-        const overflow = [];
-
-        for (const house of houses) {
-          // A house the user never placed on the map: `latitude` is null, and a
-          // null taken as 0 would watch the Gulf of Guinea.
-          if (!hasCoordinates(house)) {
-            unlocated.push(house);
-            continue;
-          }
-          const duplicate = findLocationAtPoint(updated, house);
-          if (duplicate) {
-            duplicates.push({ house, location: duplicate });
-            continue;
-          }
-          // Same check as the add action: the global CAMS model covers the
-          // planet, so this only ever catches a point that is not one.
-          if (!isCovered(house)) {
-            uncovered.push(house);
-            continue;
-          }
-          if (updated.length >= MAX_LOCATIONS) {
-            overflow.push(house);
-            continue;
-          }
-          const id = newLocationId(updated);
-          updated = upsertLocation(updated, {
-            id,
-            name: house.name,
-            // A house is a point, not an address: the geocoder has no reverse
-            // endpoint to name the town it sits in, and inventing one would be
-            // worse than the coordinates the listing already prints.
-            address_label: '',
-            latitude: house.latitude,
-            longitude: house.longitude,
-          });
-          addedIds.push(id);
-        }
-
-        if (addedIds.length > 0) {
-          await commit(updated);
-        }
-
-        const current = getConfig().locations;
-        const lines = addedIds
-          .map((id) => findLocationById(current, id))
-          .map((location) =>
-            locationLine(positionOf(current, location.id), location.name, locationDetail(location)),
-          )
-          .join(LOCATION_LINE_SEPARATOR);
-
-        // Every house that did NOT become a location gets a sentence naming it.
-        const notes = { en: '', fr: '' };
-        if (duplicates.length > 0) {
-          const en = duplicates
-            .map(
-              ({ house, location }) =>
-                `"${house.name}" (already location ${positionOf(current, location.id)} "${location.name}")`,
-            )
-            .join(', ');
-          const fr = duplicates
-            .map(
-              ({ house, location }) =>
-                `« ${house.name} » (déjà le lieu ${positionOf(current, location.id)} « ${location.name} »)`,
-            )
-            .join(', ');
-          notes.en += ` Already watched: ${en}.`;
-          notes.fr += ` Déjà surveillé(s) : ${fr}.`;
-        }
-        if (unlocated.length > 0) {
-          notes.en += ` Not placed on the map in Gladys, so there is no point to watch: ${quoteNames(unlocated, 'en')}. Set their location in Settings > Houses and click again.`;
-          notes.fr += ` Sans position sur la carte dans Gladys, donc sans point à surveiller : ${quoteNames(unlocated, 'fr')}. Renseignez leur emplacement dans Réglages > Maisons puis relancez l'action.`;
-        }
-        if (uncovered.length > 0) {
-          notes.en += ` No air quality source covers them: ${quoteNames(uncovered, 'en')}.`;
-          notes.fr += ` Aucune source de qualité de l'air ne les couvre : ${quoteNames(uncovered, 'fr')}.`;
-        }
-        if (overflow.length > 0) {
-          notes.en += ` Maximum ${MAX_LOCATIONS} locations reached, left out: ${quoteNames(overflow, 'en')}.`;
-          notes.fr += ` Maximum de ${MAX_LOCATIONS} lieux atteint, laissée(s) de côté : ${quoteNames(overflow, 'fr')}.`;
-        }
-
-        if (addedIds.length === 0) {
-          return {
-            en: `No house to add: your ${houses.length} Gladys house(s) are already watched or cannot be.${notes.en}`,
-            fr: `Aucune maison à ajouter : vos ${houses.length} maison(s) Gladys sont déjà surveillées ou ne peuvent pas l'être.${notes.fr}`,
-          };
-        }
-        return {
-          en: `${addedIds.length} Gladys house(s) added. Add their devices from the Discovery tab:${LOCATION_LINE_SEPARATOR}${lines}${notes.en}`,
-          fr: `${addedIds.length} maison(s) Gladys ajoutée(s). Ajoutez leurs appareils depuis l'onglet Découverte :${LOCATION_LINE_SEPARATOR}${lines}${notes.fr}`,
-        };
-      },
-
-      /**
-       * List the configured locations, numbered.
-       *
-       * This is the whole "display" side of the integration: the Configuration
-       * screen shows nothing else of what it holds, and these numbers are the
-       * ones the delete dropdown offers.
-       */
-      async list_locations() {
-        const { locations } = getConfig();
-        logger.info(`Action list_locations -> ${locations.length} location(s)`);
-        if (locations.length === 0) {
-          return {
-            en: 'No location yet. Add one with "Add a location".',
-            fr: "Aucun lieu pour l'instant. Ajoutez-en un avec « Ajouter un lieu ».",
-          };
-        }
-        const listing = describeLocations(locations);
-        return {
-          en: `${locations.length}/${MAX_LOCATIONS} location(s), as "${LOCATION_LINE_MARKER}number. name — place (latitude, longitude)":${LOCATION_LINE_SEPARATOR}${listing}`,
-          fr: `${locations.length}/${MAX_LOCATIONS} lieu(x), au format « ${LOCATION_LINE_MARKER}numéro. nom — lieu (latitude, longitude) » :${LOCATION_LINE_SEPARATOR}${listing}`,
-        };
-      },
-
-      /**
-       * Remove the location this action's dropdown names — by its POSITION in
-       * the list, which is all a static `select` can offer.
-       */
-      async remove_location(fields = {}) {
-        logger.info(
-          `Action remove_location <- ${fields.location ?? ''} confirmation=${fields.confirmation ?? false}`,
-        );
-        const { locations } = getConfig();
-        if (locations.length === 0) {
-          return {
-            en: 'No location yet. Add one with "Add a location".',
-            fr: "Aucun lieu pour l'instant. Ajoutez-en un avec « Ajouter un lieu ».",
-          };
-        }
-
-        const location = locationAtPosition(locations, fields.location);
-        if (!location) {
-          return {
-            en: `There is no location ${fields.location}. Configured: ${describeLocations(locations)}`,
-            fr: `Il n'y a pas de lieu ${fields.location}. Configurés : ${describeLocations(locations)}`,
-          };
-        }
-        if (fields.confirmation !== true) {
-          // One click away from losing a location, in a screen full of buttons:
-          // the checkbox is what makes it deliberate.
-          return {
-            en: `Tick "I confirm" to delete location ${fields.location} "${location.name}" (${describeLocation(location)}).`,
-            fr: `Cochez « Je confirme » pour supprimer le lieu ${fields.location} « ${location.name} » (${describeLocation(location)}).`,
-          };
-        }
-
-        // Asked BEFORE the re-publish, while the location still has an
-        // external_id to look for: a device the user has already created is the
-        // one case an integration cannot clean up, and it must say so precisely
-        // rather than leave a sensor that never updates again.
-        const created = await createdDeviceOf(location);
-        await commit(removeLocation(locations, location.id));
-
-        // Deleting the third of four locations moves the fourth up a rank, and
-        // those numbers are what this very dropdown offers.
-        const renumbered =
-          positionOf(locations, location.id) < locations.length
-            ? {
-                en: ' The locations after it moved up one rank: run "Show my locations" before deleting another one.',
-                fr: " Les lieux suivants remontent d'un rang : lancez « Afficher mes lieux » avant d'en supprimer un autre.",
-              }
-            : { en: '', fr: '' };
-
-        if (!created) {
-          // Never created: re-publishing the list without it is enough, the
-          // Discovery screen stops offering it on the spot.
-          return {
-            en: `Location "${location.name}" removed, and it is no longer offered in the Discovery tab.${renumbered.en}`,
-            fr: `Lieu « ${location.name} » supprimé, et il n'est plus proposé dans l'onglet Découverte.${renumbered.fr}`,
-          };
-        }
-        // An integration can only stop OFFERING a device; deleting one the user
-        // created is not something the host API lets it do, at any version.
-        return {
-          en: `Location "${location.name}" removed. Its device "${created.name}" still exists in Gladys and will stop updating: delete it yourself from the integration's Devices tab — an integration is not allowed to delete a device.${renumbered.en}`,
-          fr: `Lieu « ${location.name} » supprimé. Son appareil « ${created.name} » existe toujours dans Gladys et ne se mettra plus à jour : supprimez-le vous-même depuis l'onglet Appareils de l'intégration — une intégration n'a pas le droit de supprimer un appareil.${renumbered.fr}`,
-        };
-      },
+      }
+      return {
+        en: `Location ${position} "${name}" added: ${describeLocation(saved)}. Add its device from the Discovery tab; "Show my locations" lists them all.`,
+        fr: `Lieu ${position} « ${name} » ajouté : ${describeLocation(saved)}. Ajoutez son appareil depuis l'onglet Découverte ; « Afficher mes lieux » les liste tous.`,
+      };
     },
+
+    /**
+     * Add every house configured in Gladys that is not watched yet, in one
+     * click.
+     *
+     * WHY IT EXISTS. The user has already placed their home on a map, in
+     * Gladys. Making them type their own town again, in another form, to
+     * watch the air above that same roof is asking twice for something the
+     * core will hand over — see `src/houses.js` for the permission that makes
+     * it readable.
+     *
+     * WHAT IT IS NOT. It is not a sync: the houses are READ once, when the
+     * button is clicked, and what comes out is ordinary locations the user
+     * renames and deletes like any other. A house moved in Gladys afterwards
+     * leaves its location where it was — the same rule as everywhere else
+     * here, a point that moved is another location.
+     *
+     * Nothing is written unless something is actually added, and everything
+     * skipped is named: a button that answers "0 added" without saying why is
+     * a button the user clicks again.
+     */
+    async import_houses() {
+      logger.info('Action import_houses');
+
+      let houses;
+      try {
+        houses = await listHouses();
+      } catch (err) {
+        if (err?.code === HOUSE_ACCESS_DENIED) {
+          // Not an outage: the INSTALLED manifest never asked for the
+          // permission, and only re-installing the integration grants it.
+          logger.warn('The house coordinates are not granted to this integration');
+          return {
+            en: 'Gladys refuses to share the coordinates of your houses with this integration. That access is granted when the integration is installed: update it to a version that asks for it, or remove and re-install it, and accept the request shown on the install screen. Meanwhile "Add a location" works the same way with a town name.',
+            fr: "Gladys refuse de partager les coordonnées de vos maisons avec cette intégration. Cet accès s'accorde à l'installation : mettez l'intégration à jour vers une version qui le demande, ou supprimez-la et réinstallez-la en acceptant la demande affichée sur l'écran d'installation. En attendant, « Ajouter un lieu » fait la même chose avec un nom de commune.",
+          };
+        }
+        logger.warn('Could not read the houses configured in Gladys', err);
+        const reason = shortReason(err);
+        return {
+          en: `Could not read the houses configured in Gladys: ${reason}. Add the location by its town name instead.`,
+          fr: `Impossible de lire les maisons configurées dans Gladys : ${reason}. Ajoutez plutôt le lieu par son nom de commune.`,
+        };
+      }
+
+      if (houses.length === 0) {
+        return {
+          en: 'Gladys has no house configured. Create one in Settings > Houses, place it on the map, then click this button again.',
+          fr: 'Gladys ne contient aucune maison. Créez-en une dans Réglages > Maisons, placez-la sur la carte, puis relancez cette action.',
+        };
+      }
+
+      // The whole import is computed against ONE list and written ONCE: a
+      // setConfig per house would re-publish the Discovery tab as many times,
+      // and a failure halfway would leave half an import behind. Read AFTER
+      // the houses came back, so it is the list of now.
+      const { locations } = getConfig();
+      let updated = locations;
+      const addedIds = [];
+      const duplicates = [];
+      const unlocated = [];
+      const uncovered = [];
+      const overflow = [];
+
+      for (const house of houses) {
+        // A house the user never placed on the map: `latitude` is null, and a
+        // null taken as 0 would watch the Gulf of Guinea.
+        if (!hasCoordinates(house)) {
+          unlocated.push(house);
+          continue;
+        }
+        const duplicate = findLocationAtPoint(updated, house);
+        if (duplicate) {
+          duplicates.push({ house, location: duplicate });
+          continue;
+        }
+        // Same check as the add action: the global CAMS model covers the
+        // planet, so this only ever catches a point that is not one.
+        if (!isCovered(house)) {
+          uncovered.push(house);
+          continue;
+        }
+        if (updated.length >= MAX_LOCATIONS) {
+          overflow.push(house);
+          continue;
+        }
+        const id = newLocationId(updated);
+        updated = upsertLocation(updated, {
+          id,
+          name: house.name,
+          // A house is a point, not an address: the geocoder has no reverse
+          // endpoint to name the town it sits in, and inventing one would be
+          // worse than the coordinates the listing already prints.
+          address_label: '',
+          latitude: house.latitude,
+          longitude: house.longitude,
+        });
+        addedIds.push(id);
+      }
+
+      const notPublished = addedIds.length > 0 ? await commit(updated) : null;
+
+      const current = getConfig().locations;
+      const lines = addedIds
+        .map((id) => findLocationById(current, id))
+        .map((location) =>
+          locationLine(positionOf(current, location.id), location.name, locationDetail(location)),
+        )
+        .join(LOCATION_LINE_SEPARATOR);
+
+      // Every house that did NOT become a location gets a sentence naming it.
+      const notes = { en: '', fr: '' };
+      if (duplicates.length > 0) {
+        const en = duplicates
+          .map(
+            ({ house, location }) =>
+              `"${house.name}" (already location ${positionOf(current, location.id)} "${location.name}")`,
+          )
+          .join(', ');
+        const fr = duplicates
+          .map(
+            ({ house, location }) =>
+              `« ${house.name} » (déjà le lieu ${positionOf(current, location.id)} « ${location.name} »)`,
+          )
+          .join(', ');
+        notes.en += ` Already watched: ${en}.`;
+        notes.fr += ` Déjà surveillé(s) : ${fr}.`;
+      }
+      if (unlocated.length > 0) {
+        notes.en += ` Not placed on the map in Gladys, so there is no point to watch: ${quoteNames(unlocated, 'en')}. Set their location in Settings > Houses and click again.`;
+        notes.fr += ` Sans position sur la carte dans Gladys, donc sans point à surveiller : ${quoteNames(unlocated, 'fr')}. Renseignez leur emplacement dans Réglages > Maisons puis relancez l'action.`;
+      }
+      if (uncovered.length > 0) {
+        notes.en += ` No air quality source covers them: ${quoteNames(uncovered, 'en')}.`;
+        notes.fr += ` Aucune source de qualité de l'air ne les couvre : ${quoteNames(uncovered, 'fr')}.`;
+      }
+      if (overflow.length > 0) {
+        notes.en += ` Maximum ${MAX_LOCATIONS} locations reached, left out: ${quoteNames(overflow, 'en')}.`;
+        notes.fr += ` Maximum de ${MAX_LOCATIONS} lieux atteint, laissée(s) de côté : ${quoteNames(overflow, 'fr')}.`;
+      }
+
+      if (notPublished) {
+        return savedButNotPublished(
+          {
+            en: `${addedIds.length} Gladys house(s) saved as locations`,
+            fr: `${addedIds.length} maison(s) Gladys enregistrée(s) comme lieux`,
+          },
+          notPublished,
+          `${LOCATION_LINE_SEPARATOR}${lines}`,
+        );
+      }
+      if (addedIds.length === 0) {
+        return {
+          en: `No house to add: your ${houses.length} Gladys house(s) are already watched or cannot be.${notes.en}`,
+          fr: `Aucune maison à ajouter : vos ${houses.length} maison(s) Gladys sont déjà surveillées ou ne peuvent pas l'être.${notes.fr}`,
+        };
+      }
+      return {
+        en: `${addedIds.length} Gladys house(s) added. Add their devices from the Discovery tab:${LOCATION_LINE_SEPARATOR}${lines}${notes.en}`,
+        fr: `${addedIds.length} maison(s) Gladys ajoutée(s). Ajoutez leurs appareils depuis l'onglet Découverte :${LOCATION_LINE_SEPARATOR}${lines}${notes.fr}`,
+      };
+    },
+
+    /**
+     * List the configured locations, numbered.
+     *
+     * This is the whole "display" side of the integration: the Configuration
+     * screen shows nothing else of what it holds, and these numbers are the
+     * ones the delete dropdown offers.
+     */
+    async list_locations() {
+      const { locations } = getConfig();
+      logger.info(`Action list_locations -> ${locations.length} location(s)`);
+      if (locations.length === 0) {
+        return {
+          en: 'No location yet. Add one with "Add a location".',
+          fr: "Aucun lieu pour l'instant. Ajoutez-en un avec « Ajouter un lieu ».",
+        };
+      }
+      const listing = describeLocations(locations);
+      return {
+        en: `${locations.length}/${MAX_LOCATIONS} location(s), as "${LOCATION_LINE_MARKER}number. name — place (latitude, longitude)":${LOCATION_LINE_SEPARATOR}${listing}`,
+        fr: `${locations.length}/${MAX_LOCATIONS} lieu(x), au format « ${LOCATION_LINE_MARKER}numéro. nom — lieu (latitude, longitude) » :${LOCATION_LINE_SEPARATOR}${listing}`,
+      };
+    },
+
+    /**
+     * Remove the location this action's dropdown names — by its POSITION in
+     * the list, which is all a static `select` can offer.
+     */
+    async remove_location(fields = {}) {
+      logger.info(
+        `Action remove_location <- ${fields.location ?? ''} confirmation=${fields.confirmation ?? false}`,
+      );
+      const { locations } = getConfig();
+      if (locations.length === 0) {
+        return {
+          en: 'No location yet. Add one with "Add a location".',
+          fr: "Aucun lieu pour l'instant. Ajoutez-en un avec « Ajouter un lieu ».",
+        };
+      }
+
+      const location = locationAtPosition(locations, fields.location);
+      if (!location) {
+        return {
+          en: `There is no location ${fields.location}. Configured: ${describeLocations(locations)}`,
+          fr: `Il n'y a pas de lieu ${fields.location}. Configurés : ${describeLocations(locations)}`,
+        };
+      }
+      if (fields.confirmation !== true) {
+        // One click away from losing a location, in a screen full of buttons:
+        // the checkbox is what makes it deliberate.
+        return {
+          en: `Tick "I confirm" to delete location ${fields.location} "${location.name}" (${describeLocation(location)}).`,
+          fr: `Cochez « Je confirme » pour supprimer le lieu ${fields.location} « ${location.name} » (${describeLocation(location)}).`,
+        };
+      }
+
+      // Asked BEFORE the re-publish, while the location still has an
+      // external_id to look for: a device the user has already created is the
+      // one case an integration cannot clean up, and it must say so precisely
+      // rather than leave a sensor that never updates again.
+      const created = await createdDeviceOf(location);
+      // RE-READ after that request: remove from the list of now, not from
+      // the one read before it.
+      const current = getConfig().locations;
+      const notPublished = await commit(removeLocation(current, location.id));
+      if (notPublished) {
+        return savedButNotPublished(
+          {
+            en: `Location "${location.name}" removed`,
+            fr: `Lieu « ${location.name} » supprimé`,
+          },
+          notPublished,
+        );
+      }
+
+      // Deleting the third of four locations moves the fourth up a rank, and
+      // those numbers are what this very dropdown offers.
+      const renumbered =
+        positionOf(current, location.id) < current.length
+          ? {
+              en: ' The locations after it moved up one rank: run "Show my locations" before deleting another one.',
+              fr: " Les lieux suivants remontent d'un rang : lancez « Afficher mes lieux » avant d'en supprimer un autre.",
+            }
+          : { en: '', fr: '' };
+
+      if (!created) {
+        // Never created: re-publishing the list without it is enough, the
+        // Discovery screen stops offering it on the spot.
+        return {
+          en: `Location "${location.name}" removed, and it is no longer offered in the Discovery tab.${renumbered.en}`,
+          fr: `Lieu « ${location.name} » supprimé, et il n'est plus proposé dans l'onglet Découverte.${renumbered.fr}`,
+        };
+      }
+      // An integration can only stop OFFERING a device; deleting one the user
+      // created is not something the host API lets it do, at any version.
+      return {
+        en: `Location "${location.name}" removed. Its device "${created.name}" still exists in Gladys and will stop updating: delete it yourself from the integration's Devices tab — an integration is not allowed to delete a device.${renumbered.en}`,
+        fr: `Lieu « ${location.name} » supprimé. Son appareil « ${created.name} » existe toujours dans Gladys et ne se mettra plus à jour : supprimez-le vous-même depuis l'onglet Appareils de l'intégration — une intégration n'a pas le droit de supprimer un appareil.${renumbered.fr}`,
+      };
+    },
+  };
+
+  /**
+   * Write the list back once if an entry was stored without an id.
+   *
+   * `normalizeLocations` gives such an entry a random id, a NEW one at every
+   * read, and that id is its device's external_id: unwritten, the device the
+   * user created would be orphaned at the next restart. Called with the raw
+   * stored value whenever a configuration is loaded, BEFORE the devices are
+   * published, so they are published under the ids that are kept. Queued with
+   * the actions, so it never races one of them; it writes the in-memory list,
+   * whose ids are the ones generated at that load. Never throws: a failed
+   * write is logged, and the next load tries again.
+   * @param {unknown} storedLocations the `locations` value as it was stored
+   * @returns {Promise<boolean>} whether the list was written
+   */
+  function persistGeneratedIds(storedLocations) {
+    return exclusive(async () => {
+      if (!locationsMissingIds(storedLocations)) {
+        return false;
+      }
+      try {
+        const { locations } = getConfig();
+        await setConfig({ [LOCATIONS_KEY]: serializeLocations(locations) });
+        logger.info(`Stored the ids generated for ${locations.length} location(s)`);
+        return true;
+      } catch (err) {
+        logger.error('Could not store the generated location ids', err);
+        return false;
+      }
+    });
+  }
+
+  return {
+    actions: Object.fromEntries(
+      Object.entries(handlers).map(([key, handler]) => [
+        key,
+        (fields) => exclusive(() => handler(fields)),
+      ]),
+    ),
+    persistGeneratedIds,
   };
 }

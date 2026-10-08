@@ -173,19 +173,20 @@ the geocoder does not know can still be added by its latitude and longitude.
 ├─ src/
 │  ├─ airQuality/
 │  │  ├─ index.js                    #   provider registry + read/grade
-│  │  ├─ openMeteo.js                #   CAMS Europe + CAMS global (no key), current + curve
+│  │  ├─ openMeteo.js                #   CAMS Europe + CAMS global (no key), current + curve, batched
 │  │  └─ scale.js                    #   µg/m³ -> 1-6 index (EEA / ATMO bands)
 │  ├─ geocoding.js                   # town -> coordinates, worldwide (GeoNames)
 │  ├─ houses.js                      # the user's Gladys houses (GET /house)
 │  ├─ devices/
 │  │  ├─ index.js                    #   blueprint registry
-│  │  └─ airQualityStation.js        #   the device: features, states, refresh
+│  │  └─ airQualityStation.js        #   the device: features, states, refresh + retries
 │  ├─ config.js                      # config defaults + normalization
 │  ├─ coordinates.js                 # WGS-84 parsing/formatting
 │  ├─ language.js                    # language of the device NAMES
 │  ├─ locationEditor.js              # the buttons: add / import houses / list / remove
 │  ├─ indexText.js                   # an index in words: "4/6 (Mauvais)", summaries
 │  ├─ locations.js                   # the location list (source of truth)
+│  ├─ reason.js                      # an error as one short line for the user
 │  ├─ richText.js                    # Unicode bold for the list labels
 │  ├─ scenes/
 │  │  ├─ indexEvents.js              #   scene TRIGGERS: one event per transition

@@ -80,12 +80,22 @@ function hourlyPayload() {
 }
 
 /** The current hour and the curve are two requests: answer each its own. */
+/**
+ * The body of an answer, as Open-Meteo shapes it: one object for one point, an
+ * array of one per point when several latitudes are asked at once.
+ */
+function perPoint(url, body) {
+  const latitudes = new URL(String(url)).searchParams.get('latitude') ?? '';
+  const count = latitudes.split(',').length;
+  return count > 1 ? Array.from({ length: count }, () => body) : body;
+}
+
 function stubFetch({ current = currentPayload(), hourly = hourlyPayload(), ok = true } = {}) {
   const calls = [];
   globalThis.fetch = async (url) => {
     calls.push(String(url));
     const body = String(url).includes('hourly=') ? hourly : current;
-    return { ok, status: ok ? 200 : 503, json: async () => body };
+    return { ok, status: ok ? 200 : 503, json: async () => perPoint(url, body) };
   };
   return calls;
 }
@@ -293,10 +303,15 @@ test('the list card stops at the status cap, and says how many are left out', as
     content.components[1].text,
     `${MAX_ROWS} lieux sur ${MAX_ROWS + 2} · CAMS (Copernicus)`,
   );
-  assert.equal(calls.length, MAX_ROWS, 'a row nobody sees costs no request');
+  // The shown rows are read in ONE request, and a row nobody sees is not in it.
+  assert.equal(calls.length, 1);
+  const latitudes = new URL(calls[0]).searchParams.get('latitude').split(',');
+  assert.equal(latitudes.length, MAX_ROWS, 'a row nobody sees costs no request');
 });
 
 test('one location failing is one row saying so', async () => {
+  // The batch gets a single body, not one per point: it is refused, and each
+  // point falls back on its own request — where Lyon fails alone.
   globalThis.fetch = async (url) =>
     String(url).includes('latitude=45.7679')
       ? { ok: false, status: 503, json: async () => ({}) }

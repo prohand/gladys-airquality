@@ -297,6 +297,11 @@ pourquoi.
 L'écran **Supervision** affiche l'état applicatif de l'intégration : il passe au
 rouge, avec la raison, si un lieu ne peut plus être lu.
 
+Un lieu pour lequel la source ne répond pas est **réessayé seul**, 30 secondes
+puis 2 minutes plus tard (davantage si la source demande de ralentir), au lieu
+de rester vide jusqu'au rafraîchissement suivant. Tous vos lieux sont lus
+ensemble, en une requête par modèle CAMS.
+
 ## Limites
 
 - **L'indice est l'indice européen, appliqué partout.** Hors d'Europe, ce n'est

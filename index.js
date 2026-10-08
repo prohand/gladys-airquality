@@ -33,8 +33,10 @@ import {
   findBlueprintByDevice,
   locationDeviceIds,
 } from './src/devices/index.js';
+import { fetchHouses } from './src/houses.js';
 import { createLocationEditor } from './src/locationEditor.js';
-import { SCENE_ACTION_HANDLERS } from './src/scenes/index.js';
+import { shortReason } from './src/reason.js';
+import { forgetRemovedLocations, SCENE_ACTION_HANDLERS } from './src/scenes/index.js';
 import { WIDGETS } from './src/widgets/index.js';
 import { withPullDeadline } from './src/widgetDeadline.js';
 
@@ -84,7 +86,7 @@ async function publishDevices() {
     // tab just stays empty with nothing anywhere to say why: the error would
     // only reach the SDK acknowledgement, which the user never sees.
     logger.error('Gladys refused the discovered devices', err);
-    const reason = String(err?.message ?? err).slice(0, 150);
+    const reason = shortReason(err);
     await gladys
       .setConnectionStatus(false, {
         en: `Gladys refused the device: ${reason}`,
@@ -114,20 +116,15 @@ function stopPolling() {
   pollingCleanups = [];
 }
 
-/** Run one refresh cycle right now. Never throws (see blueprint.refresh). */
-async function refreshNow() {
-  await Promise.all(
-    DEVICE_BLUEPRINTS.filter((blueprint) => typeof blueprint.refresh === 'function').map(
-      (blueprint) => blueprint.refresh(gladys, config),
-    ),
-  );
-}
-
 /**
  * Re-publish the devices and restart the refresh on the current list. Called by
- * the location manager after every change it makes.
+ * the location manager after every change it makes, and on a saved
+ * configuration.
  */
 async function republish() {
+  // The scene triggers remember the last class of every location; a removed
+  // one's memory would otherwise stay for the life of the container.
+  forgetRemovedLocations(config.locations.map((location) => location.id));
   if (await publishDevices()) {
     startPolling();
   } else {
@@ -138,10 +135,9 @@ async function republish() {
 // The location manager owns everything the user does with the configured
 // locations: the four actions that add, import, list and delete them. It is
 // given the capabilities it cannot have on its own — writing the configuration,
-// re-publishing the devices, asking whether a point is covered — and nothing
-// else, which is what makes it testable offline. Reading the Gladys houses is
-// its own module's default (src/houses.js): it needs no handle from here, only
-// the two environment variables the supervisor injects.
+// re-publishing the devices, asking whether a point is covered, reading the
+// Gladys houses through the SDK — and nothing else, which is what makes it
+// testable offline.
 const locationEditor = createLocationEditor({
   getConfig: () => config,
   async setConfig(patch) {
@@ -151,6 +147,9 @@ const locationEditor = createLocationEditor({
     config = normalizeConfig({ ...config, ...patch });
   },
   onLocationsChanged: republish,
+  // `GET /house`, wrapped by the SDK since 0.14.0; src/houses.js turns a 403
+  // into the "re-install to grant it" case.
+  listHouses: () => fetchHouses(gladys),
   // A point no provider answers for is refused rather than published as a
   // device that never holds a value. The global CAMS model covers the planet,
   // so in practice this only catches a coordinate that is not one.
@@ -174,10 +173,16 @@ gladys.onScanRequest(async () => {
 // Until that moment the core SILENTLY DROPS every state we publish: the feature
 // does not exist yet. Without this handler the brand new device would sit on
 // "no recent value" until the next hourly tick — which is exactly what it looks
-// like when it is broken.
+// like when it is broken. Only THAT device's location is read: the others
+// already hold their values.
 gladys.onDeviceCreated(async (device) => {
-  logger.info(`onDeviceCreated -> ${device.external_id}, refreshing right away`);
-  await refreshNow();
+  const blueprint = device ? findBlueprintByDevice(gladys, config, device) : undefined;
+  if (typeof blueprint?.refreshDevice !== 'function') {
+    logger.debug(`onDeviceCreated -> ${device?.external_id} is not ours, nothing to refresh`);
+    return;
+  }
+  logger.info(`onDeviceCreated -> ${device.external_id}, refreshing it right away`);
+  await blueprint.refreshDevice(gladys, config, device.external_id);
 });
 
 // --- Polling: Gladys asks to refresh one device ------------------------------
@@ -235,6 +240,7 @@ for (const widget of WIDGETS) {
 gladys.onConfigUpdated(async (newConfig) => {
   logger.info('onConfigUpdated -> new configuration received');
   config = normalizeConfig(newConfig);
+  await locationEditor.persistGeneratedIds(newConfig?.locations);
   // Nothing in that screen touches a location — it only holds the language and
   // the refresh interval, which `republish` applies by restarting the timers.
   await republish();
@@ -244,8 +250,14 @@ gladys.onConfigUpdated(async (newConfig) => {
 // The SDK logs the WebSocket lifecycle itself (under the `gladys-sdk` name).
 gladys.on('connected', async () => {
   try {
-    // 1) Fetch the configuration filled in by the user.
-    config = normalizeConfig(await gladys.getConfig());
+    // 1) The configuration filled in by the user. The SDK has just read it
+    // (GET /config is part of its resynchronization, before 'connected' is
+    // emitted) and keeps it in `gladys.config`: no second request.
+    config = normalizeConfig(gladys.config);
+    // An entry stored without an id was just given a random one: store it
+    // before anything is published under it, or it changes at the next start.
+    await locationEditor.persistGeneratedIds(gladys.config?.locations);
+    forgetRemovedLocations(config.locations.map((location) => location.id));
 
     // 2) (Re)publish the devices as soon as we are connected.
     if (!(await publishDevices())) {
@@ -265,7 +277,7 @@ gladys.on('connected', async () => {
     // Carry the real reason into the Supervision screen. A rejected device
     // batch is otherwise invisible: the user just sees an empty Discovery tab
     // with no clue that Gladys refused the payload.
-    const reason = String(err?.message ?? err).slice(0, 150);
+    const reason = shortReason(err);
     await gladys
       .setConnectionStatus(false, {
         en: `Initialization failed: ${reason}`,
@@ -288,7 +300,11 @@ gladys.handleShutdown((signal) => {
 
 // --- Startup -----------------------------------------------------------------
 logger.info('Starting the Air quality integration...');
+// connect() only rejects when Gladys refuses the token on the FIRST attempt
+// (close code 4000). That refusal can be transient — Gladys still booting — and
+// the SDK keeps its reconnection loop armed for life (at the max delay) either
+// way. Exiting would throw that loop away, and the supervisor does not
+// recreate a container that stopped on its own: log, and let the SDK retry.
 gladys.connect().catch((err) => {
-  logger.error('Initial connection failed', err);
-  process.exit(1);
+  logger.error('Initial connection refused, the SDK keeps retrying', err);
 });

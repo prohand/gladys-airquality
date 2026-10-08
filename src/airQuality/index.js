@@ -9,7 +9,9 @@
 // To add one:
 //   1. create `src/airQuality/<yourProvider>.js` exposing { key, name,
 //      pollutants, supports(point), fetchConcentrations(point) }, plus the
-//      OPTIONAL fetchForecast(point) the dashboard widget draws its curve from;
+//      OPTIONAL fetchForecast(point) the dashboard widget draws its curve from
+//      and the OPTIONAL prefetchConcentrations(points) that reads several
+//      points in one request ahead of their fetchConcentrations calls;
 //   2. append it to PROVIDERS below, BEFORE the more generic ones — a national
 //      source registered ahead of the CAMS ones overrides them for its own area,
 //      and the global provider must stay LAST since it supports every point.
@@ -31,6 +33,47 @@ export const PROVIDERS = [openMeteoEuropeProvider, openMeteoGlobalProvider];
  */
 export function findProvider(point) {
   return PROVIDERS.find((provider) => provider.supports(point));
+}
+
+/**
+ * The provider that covers a point, or an error saying the point is not one.
+ *
+ * The global provider covers every point on Earth, so getting here without one
+ * means the location does not hold a point: a coordinate out of range, or none.
+ * @param {{ latitude: number, longitude: number }} point
+ */
+function requireProvider(point) {
+  const provider = findProvider(point);
+  if (!provider) {
+    throw new Error(
+      `No air quality provider covers ${point.latitude},${point.longitude} ` +
+        '(that is not a point: latitude -90..90, longitude -180..180)',
+    );
+  }
+  return provider;
+}
+
+/**
+ * Read several points ahead, in as few requests as their providers allow: one
+ * per provider (that is, per CAMS domain) instead of one per point.
+ *
+ * Purely an optimisation: the readings themselves still go through
+ * `readAirQuality`, point by point, and are served from what this put in the
+ * provider's cache. A point no provider covers, or a provider with no batch
+ * read, is simply left to that per-point read. Never throws.
+ * @param {Array<{ latitude: number, longitude: number }>} points
+ */
+export function prefetchAirQuality(points) {
+  const byProvider = new Map();
+  for (const point of points) {
+    const provider = findProvider(point);
+    if (typeof provider?.prefetchConcentrations === 'function') {
+      byProvider.set(provider, [...(byProvider.get(provider) ?? []), point]);
+    }
+  }
+  for (const [provider, group] of byProvider) {
+    provider.prefetchConcentrations(group);
+  }
 }
 
 /**
@@ -63,16 +106,7 @@ export function allPollutants() {
  * }>}
  */
 export async function readAirQuality(point) {
-  const provider = findProvider(point);
-  if (!provider) {
-    // The global provider covers every point on Earth, so getting here means
-    // the location does not hold one: a coordinate out of range, or none.
-    throw new Error(
-      `No air quality provider covers ${point.latitude},${point.longitude} ` +
-        '(that is not a point: latitude -90..90, longitude -180..180)',
-    );
-  }
-
+  const provider = requireProvider(point);
   const { concentrations, measuredAt, timeZone } = await provider.fetchConcentrations(point);
 
   const subIndexes = {};
@@ -110,13 +144,7 @@ export async function readAirQuality(point) {
  * }>}
  */
 export async function readAirQualityForecast(point) {
-  const provider = findProvider(point);
-  if (!provider) {
-    throw new Error(
-      `No air quality provider covers ${point.latitude},${point.longitude} ` +
-        '(that is not a point: latitude -90..90, longitude -180..180)',
-    );
-  }
+  const provider = requireProvider(point);
   if (typeof provider.fetchForecast !== 'function') {
     // Optional part of the contract: a national source added later may only
     // know the current hour.

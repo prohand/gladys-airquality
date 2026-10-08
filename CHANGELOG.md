@@ -6,6 +6,29 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A location Open-Meteo failed to answer for is retried on its own after 30 s, then after 2 min, instead of staying empty until the next refresh; a `Retry-After` sent with a 429 is honoured.
+
+### Changed
+
+- The Gladys houses are read through the SDK's `gladys.getHouses()` (0.14.0) instead of a hand-made call to the host API; a 403 is still answered with "re-install to grant the access".
+- A refused first connection no longer exits the container: the SDK keeps reconnecting (the token refusal can be transient while Gladys boots), and the integration logs it instead.
+- The configuration is taken from `gladys.config` on connection, which the SDK has just read, instead of a second `GET /config`.
+- All the locations of a refresh are read in one Open-Meteo request per CAMS domain instead of one request per location; if that request fails, each location falls back on its own request, so one location the API refuses does not silence the others.
+- Reads of the same point made at the same time share one request: the cache holds the request in flight, drops a failed one at once and an expired one when it is next read.
+- Creating a device from the Discovery tab refreshes that device's location only, not every location.
+- The scene triggers forget the last classes of a removed location.
+- `package.json` describes the integration as it is (worldwide, by town name) and requires Node 24, the runtime of the image and of the CI.
+- The image installs exactly what `package-lock.json` locks (`npm ci --omit=dev --ignore-scripts`, no `npm install` fallback) and no longer declares a `/data` volume nothing writes to.
+- Dependabot also proposes the updates of the Docker base image, monthly.
+
+### Fixed
+
+- Two location actions clicked in the same second no longer lose a location: the add, import, list and remove actions run one at a time, and re-read the list right before they write it.
+- A location stored without an id no longer gets a new random id — hence a new device — at every start: the generated id is written back once, before the devices are published.
+- A location saved whose devices Gladys then refused to publish is answered as "saved, but the publication failed: <reason>" in both languages, instead of a bare error.
+
 ## [2.2.0] - 2026-10-07
 
 - Maintenance release, no functional change.

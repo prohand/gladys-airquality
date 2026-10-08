@@ -15,6 +15,7 @@
 
 export { OVERALL_POLLUTANT, SCENE_ACTION_HANDLERS } from './sceneActions.js';
 export {
+  forgetRemovedLocations,
   indexTransitions,
   publishIndexEvents,
   resetIndexMemory,

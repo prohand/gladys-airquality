@@ -285,6 +285,11 @@ the fastest way to see whether a location has a problem, and why.
 The **Supervision** screen shows the integration's application-level status: it
 turns red, with the reason, when a location can no longer be read.
 
+A location the source fails to answer for is **tried again on its own**, 30
+seconds later and then 2 minutes later (longer if the source asks to slow
+down), rather than staying empty until the next refresh. All your locations are
+read together, in one request per CAMS model.
+
 ## Limits
 
 - **The index is the European one, applied everywhere.** Outside Europe it is

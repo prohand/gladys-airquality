@@ -106,7 +106,8 @@ function normalizeLocation(raw, fallbackId) {
   const city = String(raw?.city ?? '').trim();
   const postalCode = String(raw?.postal_code ?? '').trim();
   return {
-    id: String(raw?.id ?? fallbackId),
+    // An empty id is no id: it would be a device external_id ending in ':'.
+    id: String(raw?.id ?? '').trim() || fallbackId,
     name: String(raw?.name ?? '').trim() || city || 'Lieu',
     // Purely informational: where the point was geocoded from, so the user can
     // see WHERE the device looks without decoding two decimals.
@@ -119,15 +120,15 @@ function normalizeLocation(raw, fallbackId) {
 }
 
 /**
- * The stored list, normalized: valid entries only, ids unique.
+ * The entries of the stored list that can be a location at all.
  *
  * Defensive on purpose: depending on how the value made the round trip through
  * the host API it can arrive as an array or as a JSON string, and a hand-edited
  * configuration can contain anything.
  * @param {unknown} raw the `locations` value returned by `getConfig()`
- * @returns {Location[]}
+ * @returns {object[]}
  */
-export function normalizeLocations(raw) {
+function storedEntries(raw) {
   let value = raw;
   if (typeof value === 'string') {
     try {
@@ -139,12 +140,36 @@ export function normalizeLocations(raw) {
   if (!Array.isArray(value)) {
     return [];
   }
+  return value.filter((entry) => entry !== null && typeof entry === 'object');
+}
 
+/**
+ * Whether the stored list holds an entry with no id of its own.
+ *
+ * Such an entry is given a RANDOM one by `normalizeLocations` — and given
+ * another one at the next read, so its device external_id would change on
+ * every restart and every saved configuration, orphaning the device the user
+ * created. The id cannot be derived from the entry instead (its name and its
+ * label are what the user edits, see `newLocationId`), so the cure is to WRITE
+ * the normalized list back once: from then on the id is stored, and stable.
+ * The caller does that write (src/locationEditor.js, `persistGeneratedIds`).
+ * @param {unknown} raw the `locations` value returned by `getConfig()`
+ */
+export function locationsMissingIds(raw) {
+  return storedEntries(raw).some((entry) => String(entry.id ?? '').trim() === '');
+}
+
+/**
+ * The stored list, normalized: valid entries only, ids unique.
+ *
+ * An entry stored without an id gets a fresh one HERE, which is only stable
+ * once it is written back — see `locationsMissingIds`.
+ * @param {unknown} raw the `locations` value returned by `getConfig()`
+ * @returns {Location[]}
+ */
+export function normalizeLocations(raw) {
   const locations = [];
-  for (const entry of value) {
-    if (entry === null || typeof entry !== 'object') {
-      continue;
-    }
+  for (const entry of storedEntries(raw)) {
     const location = normalizeLocation(entry, newLocationId(locations));
     // A duplicated id would publish two devices under one external_id, and the
     // second would silently overwrite the first's states.
