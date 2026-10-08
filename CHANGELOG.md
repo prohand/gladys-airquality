@@ -6,6 +6,8 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-10-08
+
 ### Added
 
 - A location Open-Meteo failed to answer for is retried on its own after 30 s, then after 2 min, instead of staying empty until the next refresh; a `Retry-After` sent with a 429 is honoured.
@@ -102,7 +104,8 @@ First public release.
 
 - Shorten the catalog description to the 100 characters the store allows
 
-[Unreleased]: https://github.com/prohand/gladys-airquality/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/prohand/gladys-airquality/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/prohand/gladys-airquality/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/prohand/gladys-airquality/compare/v2.1.1...v2.2.0
 [2.1.1]: https://github.com/prohand/gladys-airquality/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/prohand/gladys-airquality/compare/v2.0.0...v2.1.0
