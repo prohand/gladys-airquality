@@ -25,7 +25,7 @@
 // them for its history to be a single series rather than two datasets under one
 // chart.
 //
-// Node 20+ provides `fetch` natively: no dependency needed.
+// Node provides `fetch` natively (the runtime is Node 24): no dependency needed.
 // -----------------------------------------------------------------------------
 
 import { createLogger } from '@gladysassistant/integration-sdk';

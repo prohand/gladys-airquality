@@ -29,7 +29,10 @@ npm run format                               # prettier --write
 ```
 
 CI runs `format:check`, then `lint`, then `test`, on Node 24 (the Dockerfile's
-runtime). Run all three before pushing — a formatting diff fails the build.
+runtime, and `engines.node` in `package.json`). Run all three before pushing — a
+formatting diff fails the build. The image installs with `npm ci --omit=dev
+--ignore-scripts` from the committed lock, declares no volume (nothing is ever
+written to disk), and Dependabot watches npm, the Actions and the base image.
 
 ## Architecture
 

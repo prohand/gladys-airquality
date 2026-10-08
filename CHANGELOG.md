@@ -18,6 +18,9 @@ All notable changes to this integration are documented here. The format follows
 - Reads of the same point made at the same time share one request: the cache holds the request in flight, drops a failed one at once and an expired one when it is next read.
 - Creating a device from the Discovery tab refreshes that device's location only, not every location.
 - The scene triggers forget the last classes of a removed location.
+- `package.json` describes the integration as it is (worldwide, by town name) and requires Node 24, the runtime of the image and of the CI.
+- The image installs exactly what `package-lock.json` locks (`npm ci --omit=dev --ignore-scripts`, no `npm install` fallback) and no longer declares a `/data` volume nothing writes to.
+- Dependabot also proposes the updates of the Docker base image, monthly.
 
 ### Fixed
 
