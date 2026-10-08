@@ -13,6 +13,7 @@ import { clearAirQualityCache } from '../src/airQuality/openMeteo.js';
 import { normalizeConfig } from '../src/config.js';
 import { poll } from '../src/devices/airQualityStation.js';
 import {
+  forgetRemovedLocations,
   indexTransitions,
   publishIndexEvents,
   resetIndexMemory,
@@ -57,11 +58,17 @@ function currentPayload({ ozone = 40, pm2_5 = 5 } = {}) {
   };
 }
 
+/**
+ * Answer every request with `body` — once per point when several latitudes
+ * are asked at once, the way Open-Meteo answers a batch.
+ */
 function stubFetch(body = currentPayload(), { ok = true } = {}) {
   const calls = [];
   globalThis.fetch = async (url) => {
     calls.push(String(url));
-    return { ok, status: ok ? 200 : 503, json: async () => body };
+    const count = (new URL(String(url)).searchParams.get('latitude') ?? '').split(',').length;
+    const answer = count > 1 ? Array.from({ length: count }, () => body) : body;
+    return { ok, status: ok ? 200 : 503, json: async () => answer };
   };
   return calls;
 }
@@ -138,6 +145,22 @@ test('two locations never share a memory', () => {
 });
 
 // --- What does it carry? -----------------------------------------------------
+
+test('a removed location is forgotten, the others keep their memory', () => {
+  indexTransitions('loc-kept', reading({ overall: 2 }));
+  indexTransitions('loc-gone', reading({ overall: 2 }));
+
+  assert.equal(forgetRemovedLocations(['loc-kept']), 1);
+
+  // The kept one still compares with its last class: 2 -> 4 is a transition.
+  assert.deepEqual(indexTransitions('loc-kept', reading({ overall: 4 })).overall, {
+    from: 2,
+    to: 4,
+    direction: 'rising',
+  });
+  // The removed one starts over: nothing on its first reading.
+  assert.equal(indexTransitions('loc-gone', reading({ overall: 4 })).overall, null);
+});
 
 test('an overall event carries the device, the classes as strings and a sentence', async () => {
   const gladys = createFakeGladys();
@@ -314,7 +337,9 @@ test('refresh_air_quality refreshes every location when none is picked', async (
   const gladys = createFakeGladys();
   const outputs = await SCENE_ACTION_HANDLERS.refresh_air_quality(gladys, { fields: {}, config });
   assert.deepEqual(outputs, { refreshed: 2, failed: 0 });
-  assert.equal(calls.length, 2);
+  // Both locations are European: ONE request for the two of them.
+  assert.equal(calls.length, 1);
+  assert.match(decodeURIComponent(calls[0]), /latitude=47\.2172,45\.7679/);
   // The open dashboards are told to re-pull.
   assert.deepEqual(gladys.widgetRefreshes.sort(), Object.values(WIDGET_KEYS).sort());
 });

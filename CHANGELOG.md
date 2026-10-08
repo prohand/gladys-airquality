@@ -6,7 +6,16 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A location Open-Meteo failed to answer for is retried on its own after 30 s, then after 2 min, instead of staying empty until the next refresh; a `Retry-After` sent with a 429 is honoured.
+
 ### Changed
+
+- All the locations of a refresh are read in one Open-Meteo request per CAMS domain instead of one request per location.
+- Reads of the same point made at the same time share one request: the cache holds the request in flight, drops a failed one at once and an expired one when it is next read.
+- Creating a device from the Discovery tab refreshes that device's location only, not every location.
+- The scene triggers forget the last classes of a removed location.
 
 - The Gladys houses are read through the SDK's `gladys.getHouses()` (0.14.0) instead of a hand-made call to the host API; a 403 is still answered with "re-install to grant the access".
 

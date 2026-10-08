@@ -150,8 +150,9 @@ they win over the name when both are given.
 `{ key, name, pollutants, supports(point), fetchConcentrations(point) }`, plus
 the OPTIONAL `fetchForecast(point)` the station widget draws its curve from (a
 second request with its own cache — the refresh cycle only needs the current
-hour; a provider without it makes the card drop its chart, not fail), first
-match wins, so callers never name an implementation. Two are registered, and the
+hour; a provider without it makes the card drop its chart, not fail), and the
+OPTIONAL `prefetchConcentrations(points)` (see below); first match wins, so
+callers never name an implementation. Two are registered, and the
 order IS the routing: `openMeteoEuropeProvider` (CAMS European, ~11 km, inside a
 bounding box) then `openMeteoGlobalProvider` (CAMS global, ~40 km, every point
 on Earth). A national source goes BEFORE both; nothing goes after the global one,
@@ -161,6 +162,21 @@ Each provider asks for its `domains` explicitly — never the API's `auto` blend
 and the domain is part of the cache key: the two models are not coupled, and a
 location whose series switched between them would be two datasets under one
 chart.
+
+The cache stores the PROMISE from the moment a request leaves (`cachedRead`),
+so concurrent reads of one point share one request; a rejected one is dropped
+at once, an expired one when it is next read. Batching sits on top of it:
+Open-Meteo takes comma-separated latitudes/longitudes and answers an array, so
+`prefetchAirQuality(points)` groups the points by provider and each provider's
+`prefetchConcentrations` sends ONE request per domain, putting each point's
+share in the cache under that point's own key. The per-point reads that follow
+(`readAirQuality` → `fetchConcentrations`) are cache hits; nothing else changes.
+The answer is matched to the points BY POSITION, so one whose length is not
+the number of points asked is refused for all of them. Every refresh goes
+through `pollEach()` in `airQualityStation.js`, which prefetches first: the
+scheduled cycle, its retries, the scene action, the widget buttons. The
+consequence worth knowing: a failed batch fails every point of that domain,
+which is what an outage does anyway.
 
 ### The index scale is the domain
 
@@ -197,6 +213,8 @@ stores the key, so a renamed key is a removed one.
   Nothing fires on the first reading after a start ("unknown → 4" is not a
   change), a pollutant with no value fires nothing (missing data is not a return
   to class 1), and a refused event never takes the refresh cycle down. The
+  memory of the last classes is pruned to the current list
+  (`forgetRemovedLocations`) whenever it changes. The
   classes travel as STRINGS: a filter is a `multi_select`, whose option values
   are strings, and the core compares them with the event value.
 - **`src/scenes/sceneActions.js`** — a scene action is NEVER a condition:
@@ -261,8 +279,11 @@ discovery payload is validated by
 - **`poll_frequency` is an ENUM in MILLISECONDS capped at one minute.** Anything
   else is rejected and the **whole batch** is refused. Hence the self-driven
   timer: the devices declare no `poll_frequency`, `startPolling` refreshes
-  immediately then every `poll_frequency` seconds, floored at
-  `MIN_REFRESH_SECONDS`.
+  immediately then every `poll_frequency` seconds — kept within the manifest
+  bounds (900-86400 s) by `normalizeConfig`, the one place that clamps it. A
+  location that failed is retried on its own after `RETRY_DELAYS_MS` (30 s,
+  then 2 min; longer when a 429 carries `Retry-After`, skipped when that lands
+  after the next cycle), and the cleanup cancels a pending retry.
 - **Every feature needs an explicit numeric `min` and `max`** —
   `t_device_feature.min/max` are `NOT NULL` with no default, text features
   included. Publishing passes, then the user's "add device" click fails.
@@ -273,7 +294,7 @@ discovery payload is validated by
   `pm25-sensor`/`decimal`, `pm10-sensor`/`decimal`, `text`/`text`, and the three
   gas concentration categories `no2-sensor`/`o3-sensor`/`so2-sensor`, all
   `decimal`. Those three were **newer than the SDK** when they were adopted, so
-  `airQualityStation.js` spells the strings out; 0.12.0 exports `NO2_SENSOR`,
+  `airQualityStation.js` spells the strings out; 0.12.0+ exports `NO2_SENSOR`,
   `O3_SENSOR` and `SO2_SENSOR` but there is nothing to change — the flat list
   the core validates against is the contract, the SDK constant is a
   convenience. `no2-matter-index-sensor` is a trap: despite the name it is an
@@ -284,7 +305,8 @@ discovery payload is validated by
   reports the reason through `setConnectionStatus`.
 - **The core silently drops states for a feature that does not exist yet.**
   States published before the user adds the device go nowhere, which is why
-  `index.js` listens to `onDeviceCreated` and refreshes immediately.
+  `index.js` listens to `onDeviceCreated` and refreshes THAT device's location
+  immediately (`airQualityStation.refreshDevice`), not every location.
 - **A newline does not survive the Configuration screen** (`white-space: normal`
   on a plain `<div class="alert">`), and markup is escaped. Hence
   `LOCATION_LINE_MARKER` opening every entry of a list, and the Unicode bold of
@@ -315,7 +337,8 @@ discovery payload is validated by
   only catches what is not a point (a coordinate out of range, or none).
 - **A refresh cycle never throws.** A rejection inside a timer callback would
   take the container down; one location failing must not silence the others.
-  That includes the scene events it fires and the widget nudge it sends.
+  That includes the scene events it fires, the widget nudge it sends and the
+  retries it schedules.
 - **A scene event is fired once per transition**, never on the first reading
   after a start, never for missing data.
 
@@ -324,7 +347,11 @@ discovery payload is validated by
 Tests never touch the network: `globalThis.fetch` is stubbed per-file and
 restored in `afterEach`. `src/airQuality/openMeteo.js` keeps a module-level TTL
 cache, so tests that count requests must call `clearAirQualityCache()` in
-`beforeEach` — otherwise state leaks between tests.
+`beforeEach` — otherwise state leaks between tests. A stub answering several
+locations of one domain must answer an ARRAY when the `latitude` parameter
+holds a comma: the refresh paths batch. The retry timer is tested with
+`t.mock.timers` (`setTimeout`, `setInterval`, and `Date` when the cache must
+expire); `setImmediate` stays real to let the cycle's promises run.
 
 `test/helpers/fakeGladys.js` is the in-memory SDK stand-in; extend it when you
 use a new SDK method rather than mocking the SDK itself. Tests that fire scene

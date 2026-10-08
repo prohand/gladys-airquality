@@ -47,6 +47,7 @@ import {
   resolvePlace as geocodePlace,
 } from './geocoding.js';
 import { HOUSE_ACCESS_DENIED } from './houses.js';
+import { shortReason } from './reason.js';
 import {
   describeLocation,
   describeLocations,
@@ -328,7 +329,7 @@ export function createLocationEditor({
             };
           }
           logger.warn('Could not read the houses configured in Gladys', err);
-          const reason = String(err?.message ?? err).slice(0, 150);
+          const reason = shortReason(err);
           return {
             en: `Could not read the houses configured in Gladys: ${reason}. Add the location by its town name instead.`,
             fr: `Impossible de lire les maisons configurées dans Gladys : ${reason}. Ajoutez plutôt le lieu par son nom de commune.`,

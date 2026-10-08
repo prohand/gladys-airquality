@@ -38,7 +38,12 @@ import {
   DEVICE_FEATURE_TYPES,
   DEVICE_FEATURE_UNITS,
 } from '@gladysassistant/integration-sdk';
-import { allPollutants, findProvider, readAirQuality } from '../airQuality/index.js';
+import {
+  allPollutants,
+  findProvider,
+  prefetchAirQuality,
+  readAirQuality,
+} from '../airQuality/index.js';
 import {
   CONCENTRATION_MAX,
   INDEX_LABELS,
@@ -48,6 +53,7 @@ import {
 } from '../airQuality/scale.js';
 import { formatMeasuredAt } from '../datetime.js';
 import { DEFAULT_LANGUAGE, inLanguage } from '../language.js';
+import { shortReason } from '../reason.js';
 import { publishIndexEvents } from '../scenes/indexEvents.js';
 import { nudgeWidgets } from '../widgets/keys.js';
 import {
@@ -62,10 +68,14 @@ export const DEVICE_TYPE = 'air-quality-station';
 
 const logger = createLogger({ name: DEVICE_TYPE });
 
-// Floor on the refresh interval, whatever the configuration says. Open-Meteo is
-// a free public service and the CAMS analysis is hourly: hammering it buys
-// nothing.
-export const MIN_REFRESH_SECONDS = 300;
+// When a location could not be read, how long to wait before trying THAT
+// location again — once after 30 s, once more after 2 min, then nothing until
+// the next scheduled cycle. The interval is at least 15 min: without these, a
+// timeout or a 502 from a free public API would leave a device without a value
+// for a whole cycle. Two short tries absorb a blip; more would hammer a
+// service that is really down. A `Retry-After` sent with a 429 lengthens the
+// wait, and a retry that would land after the next cycle is not scheduled.
+export const RETRY_DELAYS_MS = [30_000, 120_000];
 
 /** Non-pollutant features. Prefixed to never collide with a pollutant key. */
 export const FEATURE = {
@@ -81,7 +91,8 @@ const CONCENTRATION_SUFFIX = 'concentration';
 
 /**
  * The three gas categories the core gained WITH this feature, spelled out
- * because the SDK does not carry them yet (0.11.0 has no `NO2_SENSOR`).
+ * because the SDK did not carry them when they were adopted (0.14.0 exports
+ * them, and the `??` below picks the constant up).
  *
  * The literal IS the contract: `setDiscoveredDevices` validates `category`
  * against `DEVICE_FEATURE_CATEGORIES_LIST`, a flat list of these very strings,
@@ -401,37 +412,55 @@ export async function poll(gladys, location, language = DEFAULT_LANGUAGE) {
 }
 
 /**
- * Read a list of locations and publish what they answer, counting the failures
- * instead of propagating them.
+ * Read a list of locations and publish what they answer, turning each failure
+ * into an outcome instead of a rejection: one location failing must never cost
+ * the others their refresh.
  *
- * Shared by everything that refreshes ON DEMAND — the scene action, the widget
- * buttons — because they all owe their caller a count rather than a stack
- * trace, and one location failing must never cost the others their refresh.
- * The scheduled cycle has its own reporting (see `refresh`).
+ * The ONE loop every refresh goes through — the scheduled cycle, its retries,
+ * the scene action, the widget buttons, a device just created. The points are
+ * read ahead first, one request per CAMS domain rather than one per location
+ * (`prefetchAirQuality`); `poll` then finds each answer in the cache.
+ * @param {import('@gladysassistant/integration-sdk').GladysIntegration} gladys
+ * @param {import('../locations.js').Location[]} locations
+ * @param {string} [language] language of the published TEXT states
+ * @returns {Promise<Array<{ location: import('../locations.js').Location, error: unknown }>>}
+ *   one outcome per location, `error` null when it was refreshed
+ */
+async function pollEach(gladys, locations, language = DEFAULT_LANGUAGE) {
+  prefetchAirQuality(locations);
+  return Promise.all(
+    locations.map(async (location) => {
+      try {
+        await poll(gladys, location, language);
+        return { location, error: null };
+      } catch (err) {
+        logger.error(`Air quality refresh failed for ${describeLocation(location)}`, err);
+        return { location, error: err ?? new Error('unknown failure') };
+      }
+    }),
+  );
+}
+
+/**
+ * Refresh a list of locations ON DEMAND and count the outcome.
+ *
+ * Shared by the scene action, the widget buttons and the device creation,
+ * because they all owe their caller a count rather than a stack trace. The
+ * scheduled cycle has its own reporting (see `refresh`).
  * @param {import('@gladysassistant/integration-sdk').GladysIntegration} gladys
  * @param {import('../locations.js').Location[]} locations
  * @param {string} [language] language of the published TEXT states
  * @returns {Promise<{ refreshed: number, failed: number }>}
  */
 export async function refreshLocations(gladys, locations, language = DEFAULT_LANGUAGE) {
-  const outcomes = await Promise.all(
-    locations.map(async (location) => {
-      try {
-        await poll(gladys, location, language);
-        return true;
-      } catch (err) {
-        logger.error(`On-demand refresh failed for ${describeLocation(location)}`, err);
-        return false;
-      }
-    }),
-  );
-  const refreshed = outcomes.filter(Boolean).length;
-  return { refreshed, failed: outcomes.length - refreshed };
+  const outcomes = await pollEach(gladys, locations, language);
+  const failed = outcomes.filter((outcome) => outcome.error).length;
+  return { refreshed: outcomes.length - failed, failed };
 }
 
 /** Why a location could not be read, WITHOUT naming it (the line already does). */
 function failureDetail(err) {
-  const reason = String(err?.message ?? err).slice(0, 120);
+  const reason = shortReason(err, 120);
   return {
     en: `air quality refresh failed: ${reason}`,
     fr: `le rafraîchissement de la qualité de l'air a échoué : ${reason}`,
@@ -489,6 +518,55 @@ async function readEachLocation(config, locations, read) {
   return { lines, failed: lines.filter((line) => line.failed).length };
 }
 
+/**
+ * One refresh cycle over `locations`, reported in the Supervision screen.
+ * NEVER throws: it runs inside a timer callback, where a rejection would take
+ * the container down; outages go through `setConnectionStatus` instead.
+ * @returns {Promise<Array<{ location: object, error: unknown }>>} the failures
+ */
+async function refreshCycle(gladys, config, locations) {
+  const outcomes = await pollEach(gladys, locations, config.language);
+
+  // The device-bound gauge of the station card follows the published states
+  // on its own; its status rows and its forecast curve do not, so one nudge
+  // per cycle tells the open dashboards to re-pull them.
+  nudgeWidgets(gladys);
+
+  const failures = outcomes.filter((outcome) => outcome.error);
+  if (failures.length === 0) {
+    await gladys.setConnectionStatus(true).catch(() => {});
+    return failures;
+  }
+  // Only the first reason is spelled out: the status line is one line, and
+  // two stack traces in it help nobody.
+  const first = failureMessage(failures[0].error, failures[0].location.name);
+  const others =
+    failures.length > 1
+      ? {
+          en: ` (+${failures.length - 1} other location(s) failing)`,
+          fr: ` (+${failures.length - 1} autre(s) lieu(x) en échec)`,
+        }
+      : { en: '', fr: '' };
+  await gladys
+    .setConnectionStatus(false, { en: `${first.en}${others.en}`, fr: `${first.fr}${others.fr}` })
+    .catch(() => {});
+  return failures;
+}
+
+/**
+ * How long to wait before the retry number `attempt` (0-based) of these
+ * failures: the planned delay, or longer when the server asked for it.
+ * @param {Array<{ error: { retryAfterMs?: number } }>} failures
+ * @param {number} attempt
+ */
+export function retryDelay(failures, attempt) {
+  const asked = Math.max(
+    0,
+    ...failures.map(({ error }) => (Number.isFinite(error?.retryAfterMs) ? error.retryAfterMs : 0)),
+  );
+  return Math.max(RETRY_DELAYS_MS[attempt], asked);
+}
+
 export const airQualityStation = {
   key: DEVICE_TYPE,
 
@@ -522,6 +600,7 @@ export const airQualityStation = {
         return NO_LOCATION_MESSAGE;
       }
       logger.info(`Action test_provider -> live request for ${locations.length} location(s)`);
+      prefetchAirQuality(locations);
 
       const { lines, failed } = await readEachLocation(config, locations, async (location) => {
         const reading = await readAirQuality(location);
@@ -574,68 +653,112 @@ export const airQualityStation = {
   },
 
   /**
+   * Refresh the device the user just created, and only that one.
+   *
+   * Until that click the core silently dropped every state published for it
+   * (the features did not exist), so it is empty until it is read again.
+   * Never throws: a device of another type, or of a location since removed, is
+   * simply not refreshed.
+   * @param {string} externalId external_id of the created device
+   * @returns {Promise<boolean>} whether a location was refreshed
+   */
+  async refreshDevice(gladys, config, externalId) {
+    const location = findLocationByDeviceId(gladys, config, externalId);
+    if (!location) {
+      return false;
+    }
+    const { failed } = await refreshLocations(gladys, [location], config.language);
+    nudgeWidgets(gladys);
+    return failed === 0;
+  },
+
+  /**
    * Drive the refresh ourselves.
    *
    * Gladys' own polling is not usable here: `poll_frequency` is a fixed enum of
    * intervals in milliseconds whose slowest value is one minute, while the CAMS
    * analysis is hourly. So the devices declare no poll_frequency and we run our
-   * own timer at the configured interval.
-   * @returns {() => void} cleanup, to stop the timer on disconnection
+   * own timer at the configured interval (kept within the manifest bounds,
+   * 900-86400 s, by `normalizeConfig`).
+   *
+   * A location that fails is tried again on its own, after RETRY_DELAYS_MS,
+   * rather than left empty until the next cycle.
+   * @returns {() => void} cleanup: stops the timer AND any pending retry
    */
   startPolling(gladys, config) {
-    const intervalMs = Math.max(MIN_REFRESH_SECONDS, config.poll_frequency) * 1000;
+    const intervalMs = config.poll_frequency * 1000;
     const count = watchedLocations(config).length;
     logger.info(`Refreshing ${count} location(s) every ${Math.round(intervalMs / 1000)} s`);
 
+    let stopped = false;
+    let retryTimer = null;
+    // Bumped by every scheduled cycle: a retry chain started by an older one
+    // must not outlive it.
+    let generation = 0;
+
+    const cancelRetry = () => {
+      clearTimeout(retryTimer);
+      retryTimer = null;
+    };
+
+    /** One cycle, then the retry of what failed. Never rejects. */
+    const run = async (locations, attempt, cycleGeneration) => {
+      try {
+        const failures = await refreshCycle(gladys, config, locations);
+        if (
+          stopped ||
+          cycleGeneration !== generation ||
+          failures.length === 0 ||
+          attempt >= RETRY_DELAYS_MS.length
+        ) {
+          return;
+        }
+        const delayMs = retryDelay(failures, attempt);
+        if (delayMs >= intervalMs) {
+          // The next scheduled cycle comes first, and reads them anyway.
+          return;
+        }
+        logger.info(
+          `Retrying ${failures.length} location(s) in ${Math.round(delayMs / 1000)} s ` +
+            `(attempt ${attempt + 1}/${RETRY_DELAYS_MS.length})`,
+        );
+        cancelRetry();
+        retryTimer = setTimeout(() => {
+          retryTimer = null;
+          run(
+            failures.map((failure) => failure.location),
+            attempt + 1,
+            cycleGeneration,
+          );
+        }, delayMs);
+      } catch (err) {
+        logger.error('Refresh cycle failed', err);
+      }
+    };
+
+    const scheduled = () => {
+      generation += 1;
+      cancelRetry();
+      run(watchedLocations(config), 0, generation);
+    };
+
     // Refresh straight away: waiting a full hour for the first value would
     // leave a freshly added device empty on the dashboard.
-    airQualityStation.refresh(gladys, config);
-    const timer = setInterval(() => airQualityStation.refresh(gladys, config), intervalMs);
-    return () => clearInterval(timer);
+    scheduled();
+    const timer = setInterval(scheduled, intervalMs);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+      cancelRetry();
+    };
   },
 
   /**
-   * One refresh cycle over every location, which NEVER throws: a rejection
-   * inside a timer callback would become an unhandled rejection and take the
-   * container down. Outages are reported through `setConnectionStatus` instead,
-   * and the next cycle simply tries again.
+   * One refresh cycle over every location, which NEVER throws (see
+   * `refreshCycle`). No retry is scheduled from here: that is the timer's job.
+   * @returns {Promise<Array<{ location: object, error: unknown }>>} the failures
    */
   async refresh(gladys, config) {
-    const locations = watchedLocations(config);
-    const outcomes = await Promise.all(
-      locations.map(async (location) => {
-        try {
-          await poll(gladys, location, config.language);
-          return null;
-        } catch (err) {
-          logger.error(`Air quality refresh failed for ${describeLocation(location)}`, err);
-          return failureMessage(err, location.name);
-        }
-      }),
-    );
-
-    // The device-bound gauge of the station card follows the published states
-    // on its own; its status rows and its forecast curve do not, so one nudge
-    // per cycle tells the open dashboards to re-pull them.
-    nudgeWidgets(gladys);
-
-    const failures = outcomes.filter(Boolean);
-    if (failures.length === 0) {
-      await gladys.setConnectionStatus(true).catch(() => {});
-      return;
-    }
-    // Only the first reason is spelled out: the status line is one line, and
-    // two stack traces in it help nobody.
-    const [first] = failures;
-    const others =
-      failures.length > 1
-        ? {
-            en: ` (+${failures.length - 1} other location(s) failing)`,
-            fr: ` (+${failures.length - 1} autre(s) lieu(x) en échec)`,
-          }
-        : { en: '', fr: '' };
-    await gladys
-      .setConnectionStatus(false, { en: `${first.en}${others.en}`, fr: `${first.fr}${others.fr}` })
-      .catch(() => {});
+    return refreshCycle(gladys, config, watchedLocations(config));
   },
 };

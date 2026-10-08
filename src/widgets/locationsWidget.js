@@ -12,7 +12,7 @@
 // -----------------------------------------------------------------------------
 
 import { createLogger } from '@gladysassistant/integration-sdk';
-import { readAirQuality } from '../airQuality/index.js';
+import { prefetchAirQuality, readAirQuality } from '../airQuality/index.js';
 import { pollutantName } from '../airQuality/scale.js';
 import { refreshLocations, watchedLocations } from '../devices/airQualityStation.js';
 import { levelText } from '../indexText.js';
@@ -82,6 +82,8 @@ export const locationsWidget = {
     // Only the rows that will be shown are read: the locations past the cap
     // would cost a request each for a line nobody sees.
     const shown = every.slice(0, MAX_ROWS);
+    // One request per CAMS domain for the whole card, not one per row.
+    prefetchAirQuality(shown);
     const rows = await Promise.all(
       shown.map(async (location) => {
         try {

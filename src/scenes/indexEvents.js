@@ -42,8 +42,9 @@ export const SCENE_TRIGGERS = {
 
 // Last known classes, per location id: `{ overall: 3, pollutants: { ozone: 4 } }`.
 // In memory only, and deliberately so — a class remembered across a restart
-// would fire a transition against an analysis nobody read. Bounded by
-// MAX_LOCATIONS entries.
+// would fire a transition against an analysis nobody read. Kept to the
+// locations of the current list by `forgetRemovedLocations`, so it stays
+// bounded by MAX_LOCATIONS entries however many locations come and go.
 const lastLevels = new Map();
 
 /**
@@ -55,6 +56,28 @@ const lastLevels = new Map();
  */
 export function resetIndexMemory() {
   lastLevels.clear();
+}
+
+/**
+ * Forget the classes of every location that is no longer in the list.
+ *
+ * Called whenever the list changes. A removed location's id is never reused
+ * (src/locations.js), so its entry could never fire anything again — it would
+ * only sit there for the life of the container. The locations still listed
+ * keep theirs: an addition or a removal elsewhere is not a restart.
+ * @param {Iterable<string>} keptIds the ids of the locations still listed
+ * @returns {number} how many were forgotten
+ */
+export function forgetRemovedLocations(keptIds) {
+  const kept = new Set(keptIds);
+  let forgotten = 0;
+  for (const id of [...lastLevels.keys()]) {
+    if (!kept.has(id)) {
+      lastLevels.delete(id);
+      forgotten += 1;
+    }
+  }
+  return forgotten;
 }
 
 /** A transition is only one when both ends are known. */
