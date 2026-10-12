@@ -6,6 +6,10 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- "Add my Gladys houses" takes an optional house: pick one of your Gladys houses to add that one only, or leave the field empty to add them all, as before. Requires Gladys 5.2.0.
+
 ### Changed
 
 - `@gladysassistant/integration-sdk` updated to 0.15.0.

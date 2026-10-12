@@ -151,6 +151,11 @@ into locations in one click. Three things hold it together:
   map) is REPORTED, never taken as 0 — that is the Gulf of Guinea. The whole
   import is one `setConfig` and one re-publish, and nothing is written when
   nothing is added.
+- **One house or all.** The optional `house` field of `import_houses` is a
+  select with `source: "houses"` (Gladys 5.2): the core lists the houses by
+  name and hands over the `selector`, matched against the houses read at the
+  click. Empty means every house, as before the field; a selector matching
+  nothing (house deleted since) is refused, never widened to every house.
 
 ### There is no country anywhere, and that is the design
 
@@ -275,10 +280,10 @@ Config/action field types: `string` (not `text`), `number`, `boolean`, `select`,
 Do not hand-edit `version` or `docker_image` in the manifest — the release
 workflow rewrites both.
 
-`gladys_version` is `>=5.1.0`, and it is the floor of the NEWEST core thing the
+`gladys_version` is `>=5.2.0`, and it is the floor of the NEWEST core thing the
 integration uses, not of the oldest: 4.85.0 opened `GET /house`, 4.86.0 added the
 `no2-sensor`/`o3-sensor`/`so2-sensor` categories AND the manifest `categories`
-field, 5.1.0 the widgets and the scene declarations. The tests compare the floor
+field, 5.1.0 the widgets and the scene declarations, 5.2.0 `source: "houses"`. The tests compare the floor
 as NUMBERS (`floorAtLeast`), never with a regex over the digits. Raise it whenever you reach for something new, because a core that does
 not know a category refuses the WHOLE discovery batch — an empty Discovery tab,
 not a device short of one feature.

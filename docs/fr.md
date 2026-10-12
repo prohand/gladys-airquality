@@ -27,6 +27,10 @@ Trois choses à savoir :
   Le lieu obtenu est un lieu ordinaire, que vous renommez et supprimez comme les
   autres, et une maison déplacée dans Gladys ensuite ne déplace pas son lieu.
 
+Pour n'ajouter qu'une de vos maisons — une maison de vacances que vous ne voulez
+pas surveiller reste de côté — choisissez-la dans le champ **Maison** du bouton ;
+laissé vide, toutes les maisons sont ajoutées.
+
 Relancer l'action est sans risque : une maison déjà surveillée est signalée, pas
 ajoutée une deuxième fois. Un lieu venu d'une maison n'a pas de libellé
 d'adresse : la liste affiche son nom et son point, car le géocodeur ne sait pas
@@ -311,7 +315,8 @@ ensemble, en une requête par modèle CAMS.
 - Hors d'Europe, le modèle est **quatre fois plus grossier** (~40 km contre
   ~11 km) : il décrit bien un fond régional, moins bien une rue.
 - Vingt lieux au maximum.
-- Gladys **5.1.0** minimum : c'est la version qui a ouvert les widgets et les
-  scènes aux intégrations.
+- Gladys **5.2.0** minimum : la 5.1.0 a ouvert les widgets et les scènes aux
+  intégrations, la 5.2.0 le choix de la maison dans « Ajouter mes maisons
+  Gladys ».
 - Un lieu n'est pas modifiable : pour changer de commune, supprimez-le et
   ajoutez-en un autre.

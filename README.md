@@ -20,10 +20,12 @@ Gladys (`GET /house`, opened by Gladys 4.85.0). That is a permission, not just a
 endpoint: the manifest declares `"location": true`, the install screen shows the
 request, and the core answers 403 to an integration that did not ask.
 
-`gladys_version` is `>=5.1.0`, the floor of the NEWEST thing the manifest uses:
+`gladys_version` is `>=5.2.0`, the floor of the NEWEST thing the manifest uses:
 4.85.0 for that endpoint, 4.86.0 for the `no2-sensor` / `o3-sensor` /
-`so2-sensor` categories and for the manifest `categories` field, and 5.1.0 for
-the `widgets`, `scene_triggers` and `scene_actions` fields. None of these floors
+`so2-sensor` categories and for the manifest `categories` field, 5.1.0 for
+the `widgets`, `scene_triggers` and `scene_actions` fields, and 5.2.0 for the
+optional `house` field of `import_houses` (a select with `source: "houses"`,
+which narrows the import to one house). None of these floors
 is cosmetic — an unknown feature category has the **whole** discovery batch
 refused, and an unknown manifest field has the whole integration refused.
 

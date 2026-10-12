@@ -25,6 +25,9 @@ Three things to know:
   out is an ordinary location, renamed and removed like the others, and a house
   moved in Gladys afterwards does not move its location.
 
+To add only one of your houses — a holiday home you do not want watched stays
+out — pick it in the button's **House** field; left empty, every house is added.
+
 Clicking again is safe: a house that is already watched is reported, not added a
 second time. A location that came from a house carries no address label: the
 listing shows its name and its point, because the geocoder cannot name the town
@@ -300,7 +303,7 @@ read together, in one request per CAMS model.
 - Outside Europe the model is **four times coarser** (~40 km against ~11 km): it
   describes a regional background well, a street less so.
 - Twenty locations maximum.
-- Gladys **5.1.0** or later: the version that opened widgets and scenes to
-  integrations.
+- Gladys **5.2.0** or later: 5.1.0 opened widgets and scenes to integrations,
+  5.2.0 the house picker of "Add my Gladys houses".
 - A location cannot be edited: to watch another commune, remove it and add a new
   one.
