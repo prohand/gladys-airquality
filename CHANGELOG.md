@@ -6,6 +6,8 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-10-12
+
 ### Added
 
 - "Add my Gladys houses" takes an optional house: pick one of your Gladys houses to add that one only, or leave the field empty to add them all, as before. Requires Gladys 5.2.0.
@@ -116,7 +118,8 @@ First public release.
 
 - Shorten the catalog description to the 100 characters the store allows
 
-[Unreleased]: https://github.com/prohand/gladys-airquality/compare/v2.3.1...HEAD
+[Unreleased]: https://github.com/prohand/gladys-airquality/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/prohand/gladys-airquality/compare/v2.3.1...v2.4.0
 [2.3.1]: https://github.com/prohand/gladys-airquality/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/prohand/gladys-airquality/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/prohand/gladys-airquality/compare/v2.1.1...v2.2.0
