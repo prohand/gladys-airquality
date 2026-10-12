@@ -312,6 +312,25 @@ test('the compatibility range covers the version that added the gas categories',
   assert.ok(floorAtLeast(4, 86), `gladys_version ${manifest.gladys_version} is below 4.86.0`);
 });
 
+test('the import button can be narrowed to one Gladys house', () => {
+  // Optional: left empty, every house is imported, as before the field. The
+  // core lists the houses by name and hands over the selector.
+  const picker = field('import_houses', 'house');
+  assert.equal(picker.type, 'select');
+  assert.equal(picker.source, 'houses');
+  assert.equal(picker.required, false);
+  assert.equal(picker.default, undefined, 'a dynamic select takes no default');
+  assert.equal(picker.options, undefined, '`source` and `options` are mutually exclusive');
+});
+
+test('a "houses" select needs the version that opened it', () => {
+  // 5.2.0 is the first core that knows `source: "houses"`: an older one
+  // rejects the WHOLE manifest over it, and the store refuses the pair.
+  if (allFields().some((f) => f.source === 'houses')) {
+    assert.ok(floorAtLeast(5, 2), `source "houses" requires gladys_version >= 5.2.0`);
+  }
+});
+
 test('the catalog categories are one to three keys the store knows', () => {
   // Air quality is one shelf, so one key: the field takes up to three, but a
   // shelf the integration does not belong on is a wrong answer, not a bonus.
