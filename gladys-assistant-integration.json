@@ -4,7 +4,9 @@
   "name": "Qualité de l'air",
   "description": {
     "en": "Air quality index of any town in the world, from the Copernicus CAMS data.",
-    "fr": "Indice de qualité de l'air de n'importe quelle commune du monde, données CAMS Copernicus."
+    "fr": "Indice de qualité de l'air de n'importe quelle commune du monde, données CAMS Copernicus.",
+    "de": "Luftqualitätsindex jeder Stadt der Welt, auf Basis der CAMS-Daten von Copernicus.",
+    "es": "Índice de calidad del aire de cualquier ciudad del mundo, con datos CAMS de Copernicus."
   },
   "version": "2.4.0",
   "docker_image": "ghcr.io/prohand/gladys-airquality:2.4.0",
@@ -19,32 +21,42 @@
       "type": "section",
       "label": {
         "en": "How it works",
-        "fr": "Comment ça marche"
+        "fr": "Comment ça marche",
+        "de": "So funktioniert es",
+        "es": "Cómo funciona"
       },
       "description": {
         "en": "Add a location with the button below: type a town, anywhere in the world, and an air quality device appears in the Discovery tab, ready to be added to Gladys. Towns are resolved by the Open-Meteo geocoding API (GeoNames), and the pollutant concentrations come from the Copernicus CAMS data, republished as open data by Open-Meteo: no account and no API key are needed. In Europe the ~11 km CAMS European model is used, elsewhere the ~40 km CAMS global one. The index is the European Air Quality Index, whose six classes and thresholds are the ones the French ATMO index has used since 2021 — it is applied worldwide, so it is not the local national index of a country outside Europe. Two dashboard widgets, two scene triggers and two scene actions come with it: add a card from the dashboard editor, and the scene editor lists them under \"Air quality\".",
-        "fr": "Ajoutez un lieu avec le bouton ci-dessous : saisissez une commune, n'importe où dans le monde, puis un appareil qualité de l'air apparaît dans l'onglet Découverte, prêt à être ajouté à Gladys. Les communes sont résolues par l'API de géocodage Open-Meteo (GeoNames), et les concentrations de polluants proviennent des données CAMS de Copernicus, rediffusées en open data par Open-Meteo : aucun compte ni clé d'API n'est nécessaire. En Europe c'est le modèle CAMS européen à ~11 km qui est utilisé, ailleurs le modèle CAMS mondial à ~40 km. L'indice est l'indice européen de qualité de l'air, dont les six classes et les seuils sont ceux de l'indice ATMO français depuis 2021 — il est appliqué partout, ce n'est donc pas l'indice national local d'un pays hors d'Europe. Deux widgets de tableau de bord, deux déclencheurs et deux actions de scène sont fournis : ajoutez une carte depuis l'éditeur de tableau de bord, et l'éditeur de scènes les propose sous « Qualité de l'air »."
+        "fr": "Ajoutez un lieu avec le bouton ci-dessous : saisissez une commune, n'importe où dans le monde, puis un appareil qualité de l'air apparaît dans l'onglet Découverte, prêt à être ajouté à Gladys. Les communes sont résolues par l'API de géocodage Open-Meteo (GeoNames), et les concentrations de polluants proviennent des données CAMS de Copernicus, rediffusées en open data par Open-Meteo : aucun compte ni clé d'API n'est nécessaire. En Europe c'est le modèle CAMS européen à ~11 km qui est utilisé, ailleurs le modèle CAMS mondial à ~40 km. L'indice est l'indice européen de qualité de l'air, dont les six classes et les seuils sont ceux de l'indice ATMO français depuis 2021 — il est appliqué partout, ce n'est donc pas l'indice national local d'un pays hors d'Europe. Deux widgets de tableau de bord, deux déclencheurs et deux actions de scène sont fournis : ajoutez une carte depuis l'éditeur de tableau de bord, et l'éditeur de scènes les propose sous « Qualité de l'air ».",
+        "de": "Fügen Sie mit der Schaltfläche unten einen Ort hinzu: Geben Sie eine Stadt ein, überall auf der Welt, und im Tab „Entdecken“ erscheint ein Luftqualitätsgerät, bereit zum Hinzufügen zu Gladys. Städte werden über die Geocoding-API von Open-Meteo (GeoNames) aufgelöst, und die Schadstoffkonzentrationen stammen aus den CAMS-Daten von Copernicus, die Open-Meteo als Open Data weiterverbreitet: Weder ein Konto noch ein API-Schlüssel ist nötig. In Europa wird das europäische CAMS-Modell (~11 km) verwendet, anderswo das globale CAMS-Modell (~40 km). Der Index ist der Europäische Luftqualitätsindex, dessen sechs Klassen und Schwellenwerte seit 2021 auch der französische ATMO-Index verwendet — er wird weltweit angewendet und ist daher außerhalb Europas nicht der nationale Index des jeweiligen Landes. Dazu gehören zwei Dashboard-Widgets, zwei Szenen-Auslöser und zwei Szenen-Aktionen: Fügen Sie eine Karte über „Dashboard bearbeiten“ hinzu; der Szenen-Editor führt sie unter „Luftqualität“ auf.",
+        "es": "Añada un lugar con el botón de abajo: escriba una ciudad, en cualquier parte del mundo, y aparecerá un dispositivo de calidad del aire en la pestaña «Descubrir», listo para añadirse a Gladys. Las ciudades se resuelven con la API de geocodificación de Open-Meteo (GeoNames), y las concentraciones de contaminantes proceden de los datos CAMS de Copernicus, redistribuidos como datos abiertos por Open-Meteo: no se necesita ninguna cuenta ni clave de API. En Europa se usa el modelo CAMS europeo (~11 km); en el resto del mundo, el modelo CAMS global (~40 km). El índice es el Índice Europeo de Calidad del Aire, cuyas seis clases y umbrales son los que usa el índice francés ATMO desde 2021; se aplica en todo el mundo, así que fuera de Europa no es el índice nacional del país. Incluye dos widgets de panel, dos activadores y dos acciones de escena: añada una tarjeta con «Editar panel», y el editor de escenas los muestra bajo «Calidad del aire»."
       },
       "links": [
         {
           "url": "https://open-meteo.com/en/docs/air-quality-api",
           "label": {
             "en": "Open-Meteo Air Quality API",
-            "fr": "API Qualité de l'air Open-Meteo"
+            "fr": "API Qualité de l'air Open-Meteo",
+            "de": "Open-Meteo-Luftqualitäts-API",
+            "es": "API de calidad del aire de Open-Meteo"
           }
         },
         {
           "url": "https://open-meteo.com/en/docs/geocoding-api",
           "label": {
             "en": "Open-Meteo geocoding API",
-            "fr": "API de géocodage Open-Meteo"
+            "fr": "API de géocodage Open-Meteo",
+            "de": "Open-Meteo-Geocoding-API",
+            "es": "API de geocodificación de Open-Meteo"
           }
         },
         {
           "url": "https://www.atmo-france.org/article/lindice-atmo",
           "label": {
             "en": "The French ATMO index",
-            "fr": "L'indice ATMO"
+            "fr": "L'indice ATMO",
+            "de": "Der französische ATMO-Index",
+            "es": "El índice francés ATMO"
           }
         }
       ]
@@ -54,11 +66,15 @@
       "type": "section",
       "label": {
         "en": "General settings",
-        "fr": "Réglages généraux"
+        "fr": "Réglages généraux",
+        "de": "Allgemeine Einstellungen",
+        "es": "Ajustes generales"
       },
       "description": {
         "en": "These settings apply to every configured location.",
-        "fr": "Ces réglages s'appliquent à tous les lieux configurés."
+        "fr": "Ces réglages s'appliquent à tous les lieux configurés.",
+        "de": "Diese Einstellungen gelten für alle konfigurierten Orte.",
+        "es": "Estos ajustes se aplican a todos los lugares configurados."
       }
     },
     {
@@ -66,11 +82,15 @@
       "type": "select",
       "label": {
         "en": "Language of the device names",
-        "fr": "Langue du nom des appareils"
+        "fr": "Langue du nom des appareils",
+        "de": "Sprache der Gerätenamen",
+        "es": "Idioma de los nombres de dispositivo"
       },
       "description": {
         "en": "The language the device and feature names are written in: \"Dominant pollutant\" or \"Polluant dominant\", \"Nitrogen dioxide (NO₂)\" or \"Dioxyde d'azote (NO₂)\". Everything else this integration displays already follows your Gladys language, but the name of a device and of its features is stored as it is published, so it has to be chosen here. A device already added to Gladys keeps the names it was created with: delete it and add it again from the Discovery tab to rename it.",
-        "fr": "La langue dans laquelle sont écrits les noms des polluants et des mesures : « Polluant dominant » ou « Dominant pollutant ». Tout le reste de ce que l'intégration affiche suit déjà la langue de votre compte Gladys, mais le nom d'un appareil et de ses fonctionnalités est enregistré tel qu'il est publié : il faut donc le choisir ici. Un appareil déjà ajouté à Gladys conserve les noms avec lesquels il a été créé : supprimez-le et rajoutez-le depuis l'onglet Découverte pour le renommer."
+        "fr": "La langue dans laquelle sont écrits les noms des polluants et des mesures : « Polluant dominant » ou « Dominant pollutant ». Tout le reste de ce que l'intégration affiche suit déjà la langue de votre compte Gladys, mais le nom d'un appareil et de ses fonctionnalités est enregistré tel qu'il est publié : il faut donc le choisir ici. Un appareil déjà ajouté à Gladys conserve les noms avec lesquels il a été créé : supprimez-le et rajoutez-le depuis l'onglet Découverte pour le renommer.",
+        "de": "Die Sprache, in der die Namen der Geräte und ihrer Funktionen geschrieben werden: „Dominierender Schadstoff“ oder „Polluant dominant“, „Stickstoffdioxid (NO₂)“ oder „Dioxyde d'azote (NO₂)“. Alles andere, was diese Integration anzeigt, folgt bereits Ihrer Gladys-Sprache, aber der Name eines Geräts und seiner Funktionen wird so gespeichert, wie er veröffentlicht wird, und muss daher hier gewählt werden. Ein bereits zu Gladys hinzugefügtes Gerät behält die Namen, mit denen es erstellt wurde: Löschen Sie es und fügen Sie es über den Tab „Entdecken“ erneut hinzu, um es umzubenennen.",
+        "es": "El idioma en que se escriben los nombres de los dispositivos y de sus funciones: «Contaminante dominante» o «Polluant dominant», «Dióxido de nitrógeno (NO₂)» o «Dioxyde d'azote (NO₂)». Todo lo demás que muestra esta integración ya sigue su idioma de Gladys, pero el nombre de un dispositivo y de sus funciones se guarda tal como se publica, así que hay que elegirlo aquí. Un dispositivo ya añadido a Gladys conserva los nombres con los que se creó: elimínelo y vuelva a añadirlo desde la pestaña «Descubrir» para renombrarlo."
       },
       "required": false,
       "default": "fr",
@@ -79,14 +99,36 @@
           "value": "fr",
           "label": {
             "en": "French",
-            "fr": "Français"
+            "fr": "Français",
+            "de": "Französisch",
+            "es": "Francés"
           }
         },
         {
           "value": "en",
           "label": {
             "en": "English",
-            "fr": "Anglais"
+            "fr": "Anglais",
+            "de": "Englisch",
+            "es": "Inglés"
+          }
+        },
+        {
+          "value": "de",
+          "label": {
+            "en": "German",
+            "fr": "Allemand",
+            "de": "Deutsch",
+            "es": "Alemán"
+          }
+        },
+        {
+          "value": "es",
+          "label": {
+            "en": "Spanish",
+            "fr": "Espagnol",
+            "de": "Spanisch",
+            "es": "Español"
           }
         }
       ]
@@ -96,11 +138,15 @@
       "type": "number",
       "label": {
         "en": "Refresh interval (s)",
-        "fr": "Intervalle de rafraîchissement (s)"
+        "fr": "Intervalle de rafraîchissement (s)",
+        "de": "Aktualisierungsintervall (s)",
+        "es": "Intervalo de actualización (s)"
       },
       "description": {
         "en": "How often each location is refreshed, in seconds. The CAMS analysis is produced once an hour, so there is nothing to gain below one hour.",
-        "fr": "Fréquence de rafraîchissement de chaque lieu, en secondes. L'analyse CAMS est produite une fois par heure : descendre sous une heure n'apporte rien."
+        "fr": "Fréquence de rafraîchissement de chaque lieu, en secondes. L'analyse CAMS est produite une fois par heure : descendre sous une heure n'apporte rien.",
+        "de": "Wie oft jeder Ort aktualisiert wird, in Sekunden. Die CAMS-Analyse wird einmal pro Stunde erstellt, unter einer Stunde ist also nichts zu gewinnen.",
+        "es": "Cada cuánto se actualiza cada lugar, en segundos. El análisis CAMS se genera una vez por hora, así que no se gana nada por debajo de una hora."
       },
       "required": false,
       "default": 3600,
@@ -112,11 +158,15 @@
       "type": "section",
       "label": {
         "en": "Your locations",
-        "fr": "Vos lieux"
+        "fr": "Vos lieux",
+        "de": "Ihre Orte",
+        "es": "Sus lugares"
       },
       "description": {
         "en": "Use the buttons below to add, list and remove your locations. \"Add my Gladys houses\" adds them all in one click, from the houses you already placed on the map in Gladys. They are not fields of this form: a list you build as you go cannot be one, so everything about them happens under a button, and the answer displayed there is what shows you the list.",
-        "fr": "Utilisez les boutons ci-dessous pour ajouter, lister et supprimer vos lieux. « Ajouter mes maisons Gladys » les ajoute toutes en un clic, à partir des maisons que vous avez déjà placées sur la carte dans Gladys. Ce ne sont pas des champs de ce formulaire : une liste que l'on construit au fil de l'eau ne peut pas en être un, donc tout se passe sous un bouton et c'est la réponse affichée là qui vous montre la liste."
+        "fr": "Utilisez les boutons ci-dessous pour ajouter, lister et supprimer vos lieux. « Ajouter mes maisons Gladys » les ajoute toutes en un clic, à partir des maisons que vous avez déjà placées sur la carte dans Gladys. Ce ne sont pas des champs de ce formulaire : une liste que l'on construit au fil de l'eau ne peut pas en être un, donc tout se passe sous un bouton et c'est la réponse affichée là qui vous montre la liste.",
+        "de": "Verwenden Sie die Schaltflächen unten, um Ihre Orte hinzuzufügen, aufzulisten und zu entfernen. „Meine Gladys-Häuser hinzufügen“ fügt sie mit einem Klick hinzu, aus den Häusern, die Sie in Gladys bereits auf der Karte platziert haben. Sie sind keine Felder dieses Formulars: Eine Liste, die nach und nach entsteht, kann keines sein, daher geschieht alles unter einer Schaltfläche, und die dort angezeigte Antwort zeigt Ihnen die Liste.",
+        "es": "Use los botones de abajo para añadir, listar y eliminar sus lugares. «Añadir mis viviendas de Gladys» las añade todas con un clic, a partir de las viviendas que ya colocó en el mapa de Gladys. No son campos de este formulario: una lista que se construye sobre la marcha no puede serlo, así que todo ocurre bajo un botón, y la respuesta que aparece allí es la que le muestra la lista."
       }
     }
   ],
@@ -125,11 +175,15 @@
       "key": "add_location",
       "label": {
         "en": "Add a location",
-        "fr": "Ajouter un lieu"
+        "fr": "Ajouter un lieu",
+        "de": "Ort hinzufügen",
+        "es": "Añadir un lugar"
       },
       "description": {
         "en": "Geocodes the town you type — anywhere in the world — and adds a location watching that point. Fill the latitude and the longitude in instead to add a point directly. Its device then shows up in the Discovery tab, and \"Show my locations\" lists it. A name shared by several places asks you which one you meant.",
-        "fr": "Géocode la commune saisie — n'importe où dans le monde — et ajoute un lieu surveillant ce point. Renseignez plutôt la latitude et la longitude pour ajouter un point directement. Son appareil apparaît ensuite dans l'onglet Découverte, et « Afficher mes lieux » le liste. Un nom partagé par plusieurs lieux vous demande lequel vous vouliez."
+        "fr": "Géocode la commune saisie — n'importe où dans le monde — et ajoute un lieu surveillant ce point. Renseignez plutôt la latitude et la longitude pour ajouter un point directement. Son appareil apparaît ensuite dans l'onglet Découverte, et « Afficher mes lieux » le liste. Un nom partagé par plusieurs lieux vous demande lequel vous vouliez.",
+        "de": "Ermittelt die Koordinaten der eingegebenen Stadt — überall auf der Welt — und fügt einen Ort hinzu, der diesen Punkt überwacht. Geben Sie stattdessen Breiten- und Längengrad ein, um direkt einen Punkt hinzuzufügen. Sein Gerät erscheint dann im Tab „Entdecken“, und „Meine Orte anzeigen“ listet es auf. Bei einem Namen, den mehrere Orte tragen, werden Sie gefragt, welcher gemeint ist.",
+        "es": "Geocodifica la ciudad que escriba, en cualquier parte del mundo, y añade un lugar que vigila ese punto. Indique en su lugar la latitud y la longitud para añadir un punto directamente. Su dispositivo aparece luego en la pestaña «Descubrir», y «Mostrar mis lugares» lo lista. Si varios lugares comparten el nombre, se le pregunta cuál quería decir."
       },
       "timeout_seconds": 30,
       "fields": [
@@ -138,16 +192,22 @@
           "type": "string",
           "label": {
             "en": "Location name",
-            "fr": "Nom du lieu"
+            "fr": "Nom du lieu",
+            "de": "Name des Orts",
+            "es": "Nombre del lugar"
           },
           "description": {
             "en": "Optional: the name of the place found is used when left empty.",
-            "fr": "Facultatif : le nom du lieu trouvé est utilisé si vous le laissez vide."
+            "fr": "Facultatif : le nom du lieu trouvé est utilisé si vous le laissez vide.",
+            "de": "Optional: Bleibt es leer, wird der Name des gefundenen Orts verwendet.",
+            "es": "Opcional: si lo deja vacío, se usa el nombre del lugar encontrado."
           },
           "required": false,
           "placeholder": {
             "en": "Home",
-            "fr": "Maison"
+            "fr": "Maison",
+            "de": "Zuhause",
+            "es": "Casa"
           }
         },
         {
@@ -155,16 +215,22 @@
           "type": "string",
           "label": {
             "en": "Town",
-            "fr": "Commune"
+            "fr": "Commune",
+            "de": "Stadt",
+            "es": "Ciudad"
           },
           "description": {
             "en": "The town to watch, anywhere in the world. Several places share most names: add a comma and the region, the country or the postal code to narrow it down, e.g. \"Montauban, Tarn-et-Garonne\" or \"Springfield, Illinois\". Optional if you fill the two coordinates in below.",
-            "fr": "La commune à surveiller, n'importe où dans le monde. La plupart des noms sont partagés par plusieurs lieux : ajoutez une virgule puis la région, le pays ou le code postal pour préciser, par exemple « Montauban, Tarn-et-Garonne » ou « Springfield, Illinois ». Facultatif si vous renseignez les deux coordonnées ci-dessous."
+            "fr": "La commune à surveiller, n'importe où dans le monde. La plupart des noms sont partagés par plusieurs lieux : ajoutez une virgule puis la région, le pays ou le code postal pour préciser, par exemple « Montauban, Tarn-et-Garonne » ou « Springfield, Illinois ». Facultatif si vous renseignez les deux coordonnées ci-dessous.",
+            "de": "Die zu überwachende Stadt, überall auf der Welt. Die meisten Namen tragen mehrere Orte: Fügen Sie ein Komma und die Region, das Land oder die Postleitzahl hinzu, um sie einzugrenzen, z. B. „Montauban, Tarn-et-Garonne“ oder „Springfield, Illinois“. Optional, wenn Sie unten die beiden Koordinaten eingeben.",
+            "es": "La ciudad que se vigilará, en cualquier parte del mundo. La mayoría de los nombres los comparten varios lugares: añada una coma y la región, el país o el código postal para precisar, por ejemplo «Montauban, Tarn-et-Garonne» o «Springfield, Illinois». Opcional si indica abajo las dos coordenadas."
           },
           "required": false,
           "placeholder": {
             "en": "Nantes, France",
-            "fr": "Nantes, France"
+            "fr": "Nantes, France",
+            "de": "Nantes, Frankreich",
+            "es": "Nantes, Francia"
           }
         },
         {
@@ -172,16 +238,22 @@
           "type": "string",
           "label": {
             "en": "Latitude (optional)",
-            "fr": "Latitude (facultatif)"
+            "fr": "Latitude (facultatif)",
+            "de": "Breitengrad (optional)",
+            "es": "Latitud (opcional)"
           },
           "description": {
             "en": "WGS-84 decimal degrees, -90 to 90. Filled in together with the longitude, this point is used as it is and the town above is then only a label.",
-            "fr": "Degrés décimaux WGS-84, de -90 à 90. Renseignée avec la longitude, ce point est utilisé tel quel et la commune ci-dessus ne sert plus que de libellé."
+            "fr": "Degrés décimaux WGS-84, de -90 à 90. Renseignée avec la longitude, ce point est utilisé tel quel et la commune ci-dessus ne sert plus que de libellé.",
+            "de": "WGS-84-Dezimalgrad, -90 bis 90. Zusammen mit dem Längengrad angegeben, wird dieser Punkt unverändert verwendet, und die Stadt oben dient dann nur noch als Bezeichnung.",
+            "es": "Grados decimales WGS-84, de -90 a 90. Indicada junto con la longitud, ese punto se usa tal cual y la ciudad de arriba solo sirve de etiqueta."
           },
           "required": false,
           "placeholder": {
             "en": "48.8566",
-            "fr": "48,8566"
+            "fr": "48,8566",
+            "de": "48.8566",
+            "es": "48,8566"
           }
         },
         {
@@ -189,16 +261,22 @@
           "type": "string",
           "label": {
             "en": "Longitude (optional)",
-            "fr": "Longitude (facultatif)"
+            "fr": "Longitude (facultatif)",
+            "de": "Längengrad (optional)",
+            "es": "Longitud (opcional)"
           },
           "description": {
             "en": "WGS-84 decimal degrees, -180 to 180. Both coordinates go together: one alone is not a point.",
-            "fr": "Degrés décimaux WGS-84, de -180 à 180. Les deux coordonnées vont ensemble : une seule ne fait pas un point."
+            "fr": "Degrés décimaux WGS-84, de -180 à 180. Les deux coordonnées vont ensemble : une seule ne fait pas un point.",
+            "de": "WGS-84-Dezimalgrad, -180 bis 180. Beide Koordinaten gehören zusammen: Eine allein ist kein Punkt.",
+            "es": "Grados decimales WGS-84, de -180 a 180. Las dos coordenadas van juntas: una sola no es un punto."
           },
           "required": false,
           "placeholder": {
             "en": "2.3522",
-            "fr": "2,3522"
+            "fr": "2,3522",
+            "de": "2.3522",
+            "es": "2,3522"
           }
         }
       ]
@@ -207,11 +285,15 @@
       "key": "import_houses",
       "label": {
         "en": "Add my Gladys houses",
-        "fr": "Ajouter mes maisons Gladys"
+        "fr": "Ajouter mes maisons Gladys",
+        "de": "Meine Gladys-Häuser hinzufügen",
+        "es": "Añadir mis viviendas de Gladys"
       },
       "description": {
         "en": "Reads the houses you configured in Gladys and adds a location for each one that is not watched yet — no town to type. Pick a house to add that one only, or leave the field empty to add them all. A house you never placed on the map has no coordinates: locate it in Settings > Houses first. The houses are read once, when you click: a location added this way is an ordinary one, which you rename and remove like the others.",
-        "fr": "Lit les maisons que vous avez configurées dans Gladys et ajoute un lieu pour chacune qui n'est pas déjà surveillée — aucune commune à saisir. Choisissez une maison pour n'ajouter qu'elle, ou laissez le champ vide pour les ajouter toutes. Une maison jamais placée sur la carte n'a pas de coordonnées : localisez-la d'abord dans Réglages > Maisons. Les maisons sont lues une fois, au clic : un lieu ajouté ainsi est un lieu ordinaire, que vous renommez et supprimez comme les autres."
+        "fr": "Lit les maisons que vous avez configurées dans Gladys et ajoute un lieu pour chacune qui n'est pas déjà surveillée — aucune commune à saisir. Choisissez une maison pour n'ajouter qu'elle, ou laissez le champ vide pour les ajouter toutes. Une maison jamais placée sur la carte n'a pas de coordonnées : localisez-la d'abord dans Réglages > Maisons. Les maisons sont lues une fois, au clic : un lieu ajouté ainsi est un lieu ordinaire, que vous renommez et supprimez comme les autres.",
+        "de": "Liest die in Gladys konfigurierten Häuser und fügt für jedes noch nicht überwachte einen Ort hinzu — ohne eine Stadt einzugeben. Wählen Sie ein Haus, um nur dieses hinzuzufügen, oder lassen Sie das Feld leer, um alle hinzuzufügen. Ein Haus, das Sie nie auf der Karte platziert haben, hat keine Koordinaten: Verorten Sie es zuerst unter Einstellungen > Zuhause. Die Häuser werden einmal gelesen, beim Klick: Ein so hinzugefügter Ort ist ein gewöhnlicher Ort, den Sie wie die anderen umbenennen und entfernen.",
+        "es": "Lee las viviendas que configuró en Gladys y añade un lugar por cada una que aún no se vigila, sin escribir ninguna ciudad. Elija una vivienda para añadir solo esa, o deje el campo vacío para añadirlas todas. Una vivienda que nunca colocó en el mapa no tiene coordenadas: ubíquela primero en Configuración > Viviendas. Las viviendas se leen una vez, al pulsar: un lugar añadido así es un lugar normal, que se renombra y elimina como los demás."
       },
       "timeout_seconds": 30,
       "fields": [
@@ -221,11 +303,15 @@
           "source": "houses",
           "label": {
             "en": "House (optional)",
-            "fr": "Maison (facultatif)"
+            "fr": "Maison (facultatif)",
+            "de": "Haus (optional)",
+            "es": "Vivienda (opcional)"
           },
           "description": {
             "en": "Leave empty to add every Gladys house.",
-            "fr": "Laissez vide pour ajouter toutes les maisons Gladys."
+            "fr": "Laissez vide pour ajouter toutes les maisons Gladys.",
+            "de": "Leer lassen, um alle Gladys-Häuser hinzuzufügen.",
+            "es": "Déjelo vacío para añadir todas las viviendas de Gladys."
           },
           "required": false
         }
@@ -235,11 +321,15 @@
       "key": "list_locations",
       "label": {
         "en": "Show my locations",
-        "fr": "Afficher mes lieux"
+        "fr": "Afficher mes lieux",
+        "de": "Meine Orte anzeigen",
+        "es": "Mostrar mis lugares"
       },
       "description": {
         "en": "Lists every configured location: name, place and coordinates. Each entry opens with a \"•\" and its number — the numbers the deletion dropdown offers.",
-        "fr": "Liste tous les lieux configurés : nom, lieu et coordonnées. Chaque entrée commence par « • » et son numéro — les numéros que propose la liste déroulante de la suppression."
+        "fr": "Liste tous les lieux configurés : nom, lieu et coordonnées. Chaque entrée commence par « • » et son numéro — les numéros que propose la liste déroulante de la suppression.",
+        "de": "Listet alle konfigurierten Orte auf: Name, Ort und Koordinaten. Jeder Eintrag beginnt mit „•“ und seiner Nummer — den Nummern, die die Auswahlliste beim Entfernen anbietet.",
+        "es": "Lista todos los lugares configurados: nombre, ubicación y coordenadas. Cada entrada empieza por «•» y su número, los números que ofrece la lista desplegable de eliminación."
       },
       "timeout_seconds": 15
     },
@@ -247,11 +337,15 @@
       "key": "test_provider",
       "label": {
         "en": "Test the air quality source (all locations)",
-        "fr": "Tester la source de qualité de l'air (tous les lieux)"
+        "fr": "Tester la source de qualité de l'air (tous les lieux)",
+        "de": "Luftqualitätsquelle testen (alle Orte)",
+        "es": "Probar la fuente de calidad del aire (todos los lugares)"
       },
       "description": {
         "en": "Reads the current data for every location and shows its index, in the format of \"Show my locations\": each entry opens with a \"•\" and its number.",
-        "fr": "Lit les données actuelles de chaque lieu et affiche son indice, au format d'« Afficher mes lieux » : chaque entrée commence par « • » et son numéro."
+        "fr": "Lit les données actuelles de chaque lieu et affiche son indice, au format d'« Afficher mes lieux » : chaque entrée commence par « • » et son numéro.",
+        "de": "Liest die aktuellen Daten jedes Orts und zeigt seinen Index an, im Format von „Meine Orte anzeigen“: Jeder Eintrag beginnt mit „•“ und seiner Nummer.",
+        "es": "Lee los datos actuales de cada lugar y muestra su índice, con el formato de «Mostrar mis lugares»: cada entrada empieza por «•» y su número."
       },
       "timeout_seconds": 60
     },
@@ -259,11 +353,15 @@
       "key": "remove_location",
       "label": {
         "en": "Remove a location",
-        "fr": "Supprimer un lieu"
+        "fr": "Supprimer un lieu",
+        "de": "Ort entfernen",
+        "es": "Eliminar un lugar"
       },
       "description": {
         "en": "Stops watching the location whose number you pick here — the numbers are the ones \"Show my locations\" lists. Its Gladys device is not deleted (an integration cannot do that): delete it yourself if you no longer want it.",
-        "fr": "Arrête de surveiller le lieu dont vous choisissez le numéro ici — ce sont les numéros qu'affiche « Afficher mes lieux ». Son appareil Gladys n'est pas supprimé (une intégration ne peut pas le faire) : supprimez-le vous-même si vous n'en voulez plus."
+        "fr": "Arrête de surveiller le lieu dont vous choisissez le numéro ici — ce sont les numéros qu'affiche « Afficher mes lieux ». Son appareil Gladys n'est pas supprimé (une intégration ne peut pas le faire) : supprimez-le vous-même si vous n'en voulez plus.",
+        "de": "Beendet die Überwachung des Orts, dessen Nummer Sie hier wählen — es sind die Nummern, die „Meine Orte anzeigen“ auflistet. Sein Gladys-Gerät wird nicht gelöscht (eine Integration kann das nicht): Löschen Sie es selbst, wenn Sie es nicht mehr brauchen.",
+        "es": "Deja de vigilar el lugar cuyo número elija aquí; son los números que lista «Mostrar mis lugares». Su dispositivo de Gladys no se elimina (una integración no puede hacerlo): elimínelo usted mismo si ya no lo quiere."
       },
       "timeout_seconds": 15,
       "fields": [
@@ -272,11 +370,15 @@
           "type": "select",
           "label": {
             "en": "Location to remove",
-            "fr": "Lieu à supprimer"
+            "fr": "Lieu à supprimer",
+            "de": "Zu entfernender Ort",
+            "es": "Lugar que se eliminará"
           },
           "description": {
             "en": "The number of the location to remove, as \"Show my locations\" numbers them.",
-            "fr": "Le numéro du lieu à supprimer, tel qu'« Afficher mes lieux » les numérote."
+            "fr": "Le numéro du lieu à supprimer, tel qu'« Afficher mes lieux » les numérote.",
+            "de": "Die Nummer des zu entfernenden Orts, wie „Meine Orte anzeigen“ sie nummeriert.",
+            "es": "El número del lugar que se eliminará, tal como los numera «Mostrar mis lugares»."
           },
           "required": true,
           "default": "1",
@@ -285,140 +387,180 @@
               "value": "1",
               "label": {
                 "en": "Location 1",
-                "fr": "Lieu 1"
+                "fr": "Lieu 1",
+                "de": "Ort 1",
+                "es": "Lugar 1"
               }
             },
             {
               "value": "2",
               "label": {
                 "en": "Location 2",
-                "fr": "Lieu 2"
+                "fr": "Lieu 2",
+                "de": "Ort 2",
+                "es": "Lugar 2"
               }
             },
             {
               "value": "3",
               "label": {
                 "en": "Location 3",
-                "fr": "Lieu 3"
+                "fr": "Lieu 3",
+                "de": "Ort 3",
+                "es": "Lugar 3"
               }
             },
             {
               "value": "4",
               "label": {
                 "en": "Location 4",
-                "fr": "Lieu 4"
+                "fr": "Lieu 4",
+                "de": "Ort 4",
+                "es": "Lugar 4"
               }
             },
             {
               "value": "5",
               "label": {
                 "en": "Location 5",
-                "fr": "Lieu 5"
+                "fr": "Lieu 5",
+                "de": "Ort 5",
+                "es": "Lugar 5"
               }
             },
             {
               "value": "6",
               "label": {
                 "en": "Location 6",
-                "fr": "Lieu 6"
+                "fr": "Lieu 6",
+                "de": "Ort 6",
+                "es": "Lugar 6"
               }
             },
             {
               "value": "7",
               "label": {
                 "en": "Location 7",
-                "fr": "Lieu 7"
+                "fr": "Lieu 7",
+                "de": "Ort 7",
+                "es": "Lugar 7"
               }
             },
             {
               "value": "8",
               "label": {
                 "en": "Location 8",
-                "fr": "Lieu 8"
+                "fr": "Lieu 8",
+                "de": "Ort 8",
+                "es": "Lugar 8"
               }
             },
             {
               "value": "9",
               "label": {
                 "en": "Location 9",
-                "fr": "Lieu 9"
+                "fr": "Lieu 9",
+                "de": "Ort 9",
+                "es": "Lugar 9"
               }
             },
             {
               "value": "10",
               "label": {
                 "en": "Location 10",
-                "fr": "Lieu 10"
+                "fr": "Lieu 10",
+                "de": "Ort 10",
+                "es": "Lugar 10"
               }
             },
             {
               "value": "11",
               "label": {
                 "en": "Location 11",
-                "fr": "Lieu 11"
+                "fr": "Lieu 11",
+                "de": "Ort 11",
+                "es": "Lugar 11"
               }
             },
             {
               "value": "12",
               "label": {
                 "en": "Location 12",
-                "fr": "Lieu 12"
+                "fr": "Lieu 12",
+                "de": "Ort 12",
+                "es": "Lugar 12"
               }
             },
             {
               "value": "13",
               "label": {
                 "en": "Location 13",
-                "fr": "Lieu 13"
+                "fr": "Lieu 13",
+                "de": "Ort 13",
+                "es": "Lugar 13"
               }
             },
             {
               "value": "14",
               "label": {
                 "en": "Location 14",
-                "fr": "Lieu 14"
+                "fr": "Lieu 14",
+                "de": "Ort 14",
+                "es": "Lugar 14"
               }
             },
             {
               "value": "15",
               "label": {
                 "en": "Location 15",
-                "fr": "Lieu 15"
+                "fr": "Lieu 15",
+                "de": "Ort 15",
+                "es": "Lugar 15"
               }
             },
             {
               "value": "16",
               "label": {
                 "en": "Location 16",
-                "fr": "Lieu 16"
+                "fr": "Lieu 16",
+                "de": "Ort 16",
+                "es": "Lugar 16"
               }
             },
             {
               "value": "17",
               "label": {
                 "en": "Location 17",
-                "fr": "Lieu 17"
+                "fr": "Lieu 17",
+                "de": "Ort 17",
+                "es": "Lugar 17"
               }
             },
             {
               "value": "18",
               "label": {
                 "en": "Location 18",
-                "fr": "Lieu 18"
+                "fr": "Lieu 18",
+                "de": "Ort 18",
+                "es": "Lugar 18"
               }
             },
             {
               "value": "19",
               "label": {
                 "en": "Location 19",
-                "fr": "Lieu 19"
+                "fr": "Lieu 19",
+                "de": "Ort 19",
+                "es": "Lugar 19"
               }
             },
             {
               "value": "20",
               "label": {
                 "en": "Location 20",
-                "fr": "Lieu 20"
+                "fr": "Lieu 20",
+                "de": "Ort 20",
+                "es": "Lugar 20"
               }
             }
           ]
@@ -428,11 +570,15 @@
           "type": "boolean",
           "label": {
             "en": "I confirm the deletion",
-            "fr": "Je confirme la suppression"
+            "fr": "Je confirme la suppression",
+            "de": "Ich bestätige das Entfernen",
+            "es": "Confirmo la eliminación"
           },
           "description": {
             "en": "Run the action once unchecked to see which location would be removed.",
-            "fr": "Lancez l'action une fois sans cocher pour voir quel lieu serait supprimé."
+            "fr": "Lancez l'action une fois sans cocher pour voir quel lieu serait supprimé.",
+            "de": "Führen Sie die Aktion einmal ohne Häkchen aus, um zu sehen, welcher Ort entfernt würde.",
+            "es": "Ejecute la acción una vez sin marcar para ver qué lugar se eliminaría."
           },
           "required": false,
           "default": false
@@ -445,11 +591,15 @@
       "key": "air_quality_station",
       "label": {
         "en": "Air quality — one place",
-        "fr": "Qualité de l'air — un lieu"
+        "fr": "Qualité de l'air — un lieu",
+        "de": "Luftqualität — ein Ort",
+        "es": "Calidad del aire — un lugar"
       },
       "description": {
         "en": "One location: its index, pollutant by pollutant, and the hours ahead.",
-        "fr": "Un lieu : son indice, polluant par polluant, et les heures à venir."
+        "fr": "Un lieu : son indice, polluant par polluant, et les heures à venir.",
+        "de": "Ein Ort: sein Index, Schadstoff für Schadstoff, und die kommenden Stunden.",
+        "es": "Un lugar: su índice, contaminante por contaminante, y las próximas horas."
       },
       "icon": "wind",
       "action_timeout_seconds": 30,
@@ -460,11 +610,15 @@
           "source": "devices",
           "label": {
             "en": "Location",
-            "fr": "Lieu"
+            "fr": "Lieu",
+            "de": "Ort",
+            "es": "Lugar"
           },
           "description": {
             "en": "The air quality device to display. Only the devices you already added from the Discovery tab are offered.",
-            "fr": "L'appareil qualité de l'air à afficher. Seuls les appareils déjà ajoutés depuis l'onglet Découverte sont proposés."
+            "fr": "L'appareil qualité de l'air à afficher. Seuls les appareils déjà ajoutés depuis l'onglet Découverte sont proposés.",
+            "de": "Das anzuzeigende Luftqualitätsgerät. Angeboten werden nur die Geräte, die Sie bereits über den Tab „Entdecken“ hinzugefügt haben.",
+            "es": "El dispositivo de calidad del aire que se mostrará. Solo se ofrecen los dispositivos que ya añadió desde la pestaña «Descubrir»."
           },
           "required": true
         },
@@ -473,11 +627,15 @@
           "type": "multi_select",
           "label": {
             "en": "Pollutants followed",
-            "fr": "Polluants suivis"
+            "fr": "Polluants suivis",
+            "de": "Verfolgte Schadstoffe",
+            "es": "Contaminantes seguidos"
           },
           "description": {
             "en": "Tick the pollutants you care about: the index shown, the rows and the curve then only account for those. Nothing ticked means all of them, which is the index Gladys publishes.",
-            "fr": "Cochez les polluants qui vous intéressent : l'indice affiché, les lignes et la courbe ne tiennent alors compte que de ceux-là. Rien de coché signifie tous, c'est-à-dire l'indice publié par Gladys."
+            "fr": "Cochez les polluants qui vous intéressent : l'indice affiché, les lignes et la courbe ne tiennent alors compte que de ceux-là. Rien de coché signifie tous, c'est-à-dire l'indice publié par Gladys.",
+            "de": "Wählen Sie die Schadstoffe aus, die Sie interessieren: Der angezeigte Index, die Zeilen und die Kurve berücksichtigen dann nur diese. Nichts ausgewählt bedeutet alle, also den Index, den Gladys veröffentlicht.",
+            "es": "Marque los contaminantes que le interesan: el índice mostrado, las filas y la curva solo tendrán en cuenta esos. No marcar ninguno equivale a todos, que es el índice que publica Gladys."
           },
           "required": false,
           "options": [
@@ -485,35 +643,45 @@
               "value": "pm2_5",
               "label": {
                 "en": "PM2.5",
-                "fr": "PM2,5"
+                "fr": "PM2,5",
+                "de": "PM2,5",
+                "es": "PM2,5"
               }
             },
             {
               "value": "pm10",
               "label": {
                 "en": "PM10",
-                "fr": "PM10"
+                "fr": "PM10",
+                "de": "PM10",
+                "es": "PM10"
               }
             },
             {
               "value": "nitrogen_dioxide",
               "label": {
                 "en": "Nitrogen dioxide (NO₂)",
-                "fr": "Dioxyde d'azote (NO₂)"
+                "fr": "Dioxyde d'azote (NO₂)",
+                "de": "Stickstoffdioxid (NO₂)",
+                "es": "Dióxido de nitrógeno (NO₂)"
               }
             },
             {
               "value": "ozone",
               "label": {
                 "en": "Ozone (O₃)",
-                "fr": "Ozone (O₃)"
+                "fr": "Ozone (O₃)",
+                "de": "Ozon (O₃)",
+                "es": "Ozono (O₃)"
               }
             },
             {
               "value": "sulphur_dioxide",
               "label": {
                 "en": "Sulphur dioxide (SO₂)",
-                "fr": "Dioxyde de soufre (SO₂)"
+                "fr": "Dioxyde de soufre (SO₂)",
+                "de": "Schwefeldioxid (SO₂)",
+                "es": "Dióxido de azufre (SO₂)"
               }
             }
           ]
@@ -523,11 +691,15 @@
           "type": "boolean",
           "label": {
             "en": "Show the hours ahead",
-            "fr": "Afficher les heures à venir"
+            "fr": "Afficher les heures à venir",
+            "de": "Kommende Stunden anzeigen",
+            "es": "Mostrar las próximas horas"
           },
           "description": {
             "en": "The hour-by-hour index for today and tomorrow, as a chart. Untick it for a compact card.",
-            "fr": "L'indice heure par heure pour aujourd'hui et demain, sous forme de graphique. Décochez pour une carte compacte."
+            "fr": "L'indice heure par heure pour aujourd'hui et demain, sous forme de graphique. Décochez pour une carte compacte.",
+            "de": "Der stündliche Index für heute und morgen, als Diagramm. Deaktivieren Sie es für eine kompakte Karte.",
+            "es": "El índice hora a hora de hoy y mañana, en un gráfico. Desmárquelo para una tarjeta compacta."
           },
           "required": false,
           "default": true
@@ -538,11 +710,15 @@
       "key": "air_quality_locations",
       "label": {
         "en": "Air quality — all places",
-        "fr": "Qualité de l'air — mes lieux"
+        "fr": "Qualité de l'air — mes lieux",
+        "de": "Luftqualität — alle Orte",
+        "es": "Calidad del aire — mis lugares"
       },
       "description": {
         "en": "One row per configured location, with its index and its dominant pollutant.",
-        "fr": "Une ligne par lieu configuré, avec son indice et son polluant dominant."
+        "fr": "Une ligne par lieu configuré, avec son indice et son polluant dominant.",
+        "de": "Eine Zeile pro konfiguriertem Ort, mit seinem Index und seinem dominierenden Schadstoff.",
+        "es": "Una fila por lugar configurado, con su índice y su contaminante dominante."
       },
       "icon": "list",
       "action_timeout_seconds": 60
@@ -553,11 +729,15 @@
       "key": "index_level_changed",
       "label": {
         "en": "Air quality index changed",
-        "fr": "L'indice de qualité de l'air a changé"
+        "fr": "L'indice de qualité de l'air a changé",
+        "de": "Luftqualitätsindex hat sich geändert",
+        "es": "El índice de calidad del aire ha cambiado"
       },
       "description": {
         "en": "Fired once when the overall index of a location moves from one class to another — never on every refresh.",
-        "fr": "Se déclenche une fois quand l'indice global d'un lieu passe d'une classe à une autre — jamais à chaque rafraîchissement."
+        "fr": "Se déclenche une fois quand l'indice global d'un lieu passe d'une classe à une autre — jamais à chaque rafraîchissement.",
+        "de": "Wird einmal ausgelöst, wenn der Gesamtindex eines Orts von einer Klasse in eine andere wechselt — nie bei jeder Aktualisierung.",
+        "es": "Se activa una vez cuando el índice global de un lugar pasa de una clase a otra; nunca en cada actualización."
       },
       "fields": [
         {
@@ -566,11 +746,15 @@
           "source": "devices",
           "label": {
             "en": "Location",
-            "fr": "Lieu"
+            "fr": "Lieu",
+            "de": "Ort",
+            "es": "Lugar"
           },
           "description": {
             "en": "Leave empty to react to any of your locations.",
-            "fr": "Laissez vide pour réagir à n'importe lequel de vos lieux."
+            "fr": "Laissez vide pour réagir à n'importe lequel de vos lieux.",
+            "de": "Leer lassen, um auf jeden Ihrer Orte zu reagieren.",
+            "es": "Déjelo vacío para reaccionar a cualquiera de sus lugares."
           },
           "required": false
         },
@@ -579,11 +763,15 @@
           "type": "multi_select",
           "label": {
             "en": "New class",
-            "fr": "Nouvelle classe"
+            "fr": "Nouvelle classe",
+            "de": "Neue Klasse",
+            "es": "Nueva clase"
           },
           "description": {
             "en": "Tick the classes to react to. Nothing ticked means any class.",
-            "fr": "Cochez les classes auxquelles réagir. Rien de coché signifie n'importe quelle classe."
+            "fr": "Cochez les classes auxquelles réagir. Rien de coché signifie n'importe quelle classe.",
+            "de": "Wählen Sie die Klassen aus, auf die reagiert werden soll. Nichts ausgewählt bedeutet jede Klasse.",
+            "es": "Marque las clases a las que reaccionar. No marcar ninguna equivale a cualquier clase."
           },
           "required": false,
           "options": [
@@ -591,42 +779,54 @@
               "value": "1",
               "label": {
                 "en": "1 — Good",
-                "fr": "1 — Bon"
+                "fr": "1 — Bon",
+                "de": "1 — Gut",
+                "es": "1 — Buena"
               }
             },
             {
               "value": "2",
               "label": {
                 "en": "2 — Fair",
-                "fr": "2 — Moyen"
+                "fr": "2 — Moyen",
+                "de": "2 — Ausreichend",
+                "es": "2 — Razonablemente buena"
               }
             },
             {
               "value": "3",
               "label": {
                 "en": "3 — Moderate",
-                "fr": "3 — Dégradé"
+                "fr": "3 — Dégradé",
+                "de": "3 — Mäßig",
+                "es": "3 — Regular"
               }
             },
             {
               "value": "4",
               "label": {
                 "en": "4 — Poor",
-                "fr": "4 — Mauvais"
+                "fr": "4 — Mauvais",
+                "de": "4 — Schlecht",
+                "es": "4 — Desfavorable"
               }
             },
             {
               "value": "5",
               "label": {
                 "en": "5 — Very poor",
-                "fr": "5 — Très mauvais"
+                "fr": "5 — Très mauvais",
+                "de": "5 — Sehr schlecht",
+                "es": "5 — Muy desfavorable"
               }
             },
             {
               "value": "6",
               "label": {
                 "en": "6 — Extremely poor",
-                "fr": "6 — Extrêmement mauvais"
+                "fr": "6 — Extrêmement mauvais",
+                "de": "6 — Extrem schlecht",
+                "es": "6 — Extremadamente desfavorable"
               }
             }
           ]
@@ -636,11 +836,15 @@
           "type": "select",
           "label": {
             "en": "Direction",
-            "fr": "Sens"
+            "fr": "Sens",
+            "de": "Richtung",
+            "es": "Sentido"
           },
           "description": {
             "en": "Leave empty for both. \"Worsening\" is the one to pick to close the windows.",
-            "fr": "Laissez vide pour les deux sens. « À la dégradation » est celui à choisir pour fermer les fenêtres."
+            "fr": "Laissez vide pour les deux sens. « À la dégradation » est celui à choisir pour fermer les fenêtres.",
+            "de": "Leer lassen für beide Richtungen. „Verschlechterung“ ist die richtige Wahl, um die Fenster zu schließen.",
+            "es": "Déjelo vacío para ambos sentidos. «Empeora» es el que debe elegir para cerrar las ventanas."
           },
           "required": false,
           "options": [
@@ -648,14 +852,18 @@
               "value": "rising",
               "label": {
                 "en": "Worsening",
-                "fr": "À la dégradation"
+                "fr": "À la dégradation",
+                "de": "Verschlechterung",
+                "es": "Empeora"
               }
             },
             {
               "value": "falling",
               "label": {
                 "en": "Improving",
-                "fr": "À l'amélioration"
+                "fr": "À l'amélioration",
+                "de": "Verbesserung",
+                "es": "Mejora"
               }
             }
           ]
@@ -667,7 +875,9 @@
           "type": "string",
           "label": {
             "en": "Location name",
-            "fr": "Nom du lieu"
+            "fr": "Nom du lieu",
+            "de": "Name des Orts",
+            "es": "Nombre del lugar"
           }
         },
         {
@@ -675,7 +885,9 @@
           "type": "string",
           "label": {
             "en": "New class (1-6)",
-            "fr": "Nouvelle classe (1-6)"
+            "fr": "Nouvelle classe (1-6)",
+            "de": "Neue Klasse (1-6)",
+            "es": "Nueva clase (1-6)"
           }
         },
         {
@@ -683,7 +895,9 @@
           "type": "string",
           "label": {
             "en": "New class, in words",
-            "fr": "Nouvelle classe, en toutes lettres"
+            "fr": "Nouvelle classe, en toutes lettres",
+            "de": "Neue Klasse, ausgeschrieben",
+            "es": "Nueva clase, en palabras"
           }
         },
         {
@@ -691,7 +905,9 @@
           "type": "string",
           "label": {
             "en": "Previous class (1-6)",
-            "fr": "Classe précédente (1-6)"
+            "fr": "Classe précédente (1-6)",
+            "de": "Vorherige Klasse (1-6)",
+            "es": "Clase anterior (1-6)"
           }
         },
         {
@@ -699,7 +915,9 @@
           "type": "string",
           "label": {
             "en": "Previous class, in words",
-            "fr": "Classe précédente, en toutes lettres"
+            "fr": "Classe précédente, en toutes lettres",
+            "de": "Vorherige Klasse, ausgeschrieben",
+            "es": "Clase anterior, en palabras"
           }
         },
         {
@@ -707,7 +925,9 @@
           "type": "string",
           "label": {
             "en": "Direction (rising / falling)",
-            "fr": "Sens (rising / falling)"
+            "fr": "Sens (rising / falling)",
+            "de": "Richtung (rising / falling)",
+            "es": "Sentido (rising / falling)"
           }
         },
         {
@@ -715,7 +935,9 @@
           "type": "string",
           "label": {
             "en": "Hour of the analysis",
-            "fr": "Heure de l'analyse"
+            "fr": "Heure de l'analyse",
+            "de": "Uhrzeit der Analyse",
+            "es": "Hora del análisis"
           }
         },
         {
@@ -723,7 +945,9 @@
           "type": "string",
           "label": {
             "en": "Dominant pollutant (key)",
-            "fr": "Polluant dominant (clé)"
+            "fr": "Polluant dominant (clé)",
+            "de": "Dominierender Schadstoff (Schlüssel)",
+            "es": "Contaminante dominante (clave)"
           }
         },
         {
@@ -731,7 +955,9 @@
           "type": "string",
           "label": {
             "en": "Dominant pollutant",
-            "fr": "Polluant dominant"
+            "fr": "Polluant dominant",
+            "de": "Dominierender Schadstoff",
+            "es": "Contaminante dominante"
           }
         },
         {
@@ -739,11 +965,15 @@
           "type": "string",
           "label": {
             "en": "Ready-made sentence",
-            "fr": "Phrase toute faite"
+            "fr": "Phrase toute faite",
+            "de": "Fertiger Satz",
+            "es": "Frase lista"
           },
           "description": {
             "en": "\"Air quality in Nantes: index 4/6 (Poor), dominant Ozone (O₃).\" — to drop straight into a notification.",
-            "fr": "« Qualité de l'air à Nantes : indice 4/6 (Mauvais), dominant Ozone (O₃). » — à glisser tel quel dans une notification."
+            "fr": "« Qualité de l'air à Nantes : indice 4/6 (Mauvais), dominant Ozone (O₃). » — à glisser tel quel dans une notification.",
+            "de": "„Luftqualität in Nantes: Index 4/6 (Schlecht), dominierend Ozon (O₃).“ — direkt für eine Benachrichtigung.",
+            "es": "«Calidad del aire en Nantes: índice 4/6 (Desfavorable), dominante Ozono (O₃).», para usar tal cual en una notificación."
           }
         }
       ]
@@ -752,11 +982,15 @@
       "key": "pollutant_index_level_changed",
       "label": {
         "en": "Sub-index of one pollutant changed",
-        "fr": "Le sous-indice d'un polluant a changé"
+        "fr": "Le sous-indice d'un polluant a changé",
+        "de": "Teilindex eines Schadstoffs hat sich geändert",
+        "es": "El subíndice de un contaminante ha cambiado"
       },
       "description": {
         "en": "The same thing, pollutant by pollutant: fired when the class of one pollutant changes at a location.",
-        "fr": "La même chose, polluant par polluant : se déclenche quand la classe d'un polluant change sur un lieu."
+        "fr": "La même chose, polluant par polluant : se déclenche quand la classe d'un polluant change sur un lieu.",
+        "de": "Dasselbe, Schadstoff für Schadstoff: wird ausgelöst, wenn sich die Klasse eines Schadstoffs an einem Ort ändert.",
+        "es": "Lo mismo, contaminante por contaminante: se activa cuando cambia la clase de un contaminante en un lugar."
       },
       "fields": [
         {
@@ -765,11 +999,15 @@
           "source": "devices",
           "label": {
             "en": "Location",
-            "fr": "Lieu"
+            "fr": "Lieu",
+            "de": "Ort",
+            "es": "Lugar"
           },
           "description": {
             "en": "Leave empty to react to any of your locations.",
-            "fr": "Laissez vide pour réagir à n'importe lequel de vos lieux."
+            "fr": "Laissez vide pour réagir à n'importe lequel de vos lieux.",
+            "de": "Leer lassen, um auf jeden Ihrer Orte zu reagieren.",
+            "es": "Déjelo vacío para reaccionar a cualquiera de sus lugares."
           },
           "required": false
         },
@@ -778,11 +1016,15 @@
           "type": "multi_select",
           "label": {
             "en": "Pollutants",
-            "fr": "Polluants"
+            "fr": "Polluants",
+            "de": "Schadstoffe",
+            "es": "Contaminantes"
           },
           "description": {
             "en": "Tick the pollutants to react to. Nothing ticked means all of them.",
-            "fr": "Cochez les polluants auxquels réagir. Rien de coché signifie tous."
+            "fr": "Cochez les polluants auxquels réagir. Rien de coché signifie tous.",
+            "de": "Wählen Sie die Schadstoffe aus, auf die reagiert werden soll. Nichts ausgewählt bedeutet alle.",
+            "es": "Marque los contaminantes a los que reaccionar. No marcar ninguno equivale a todos."
           },
           "required": false,
           "options": [
@@ -790,35 +1032,45 @@
               "value": "pm2_5",
               "label": {
                 "en": "PM2.5",
-                "fr": "PM2,5"
+                "fr": "PM2,5",
+                "de": "PM2,5",
+                "es": "PM2,5"
               }
             },
             {
               "value": "pm10",
               "label": {
                 "en": "PM10",
-                "fr": "PM10"
+                "fr": "PM10",
+                "de": "PM10",
+                "es": "PM10"
               }
             },
             {
               "value": "nitrogen_dioxide",
               "label": {
                 "en": "Nitrogen dioxide (NO₂)",
-                "fr": "Dioxyde d'azote (NO₂)"
+                "fr": "Dioxyde d'azote (NO₂)",
+                "de": "Stickstoffdioxid (NO₂)",
+                "es": "Dióxido de nitrógeno (NO₂)"
               }
             },
             {
               "value": "ozone",
               "label": {
                 "en": "Ozone (O₃)",
-                "fr": "Ozone (O₃)"
+                "fr": "Ozone (O₃)",
+                "de": "Ozon (O₃)",
+                "es": "Ozono (O₃)"
               }
             },
             {
               "value": "sulphur_dioxide",
               "label": {
                 "en": "Sulphur dioxide (SO₂)",
-                "fr": "Dioxyde de soufre (SO₂)"
+                "fr": "Dioxyde de soufre (SO₂)",
+                "de": "Schwefeldioxid (SO₂)",
+                "es": "Dióxido de azufre (SO₂)"
               }
             }
           ]
@@ -828,11 +1080,15 @@
           "type": "multi_select",
           "label": {
             "en": "New class",
-            "fr": "Nouvelle classe"
+            "fr": "Nouvelle classe",
+            "de": "Neue Klasse",
+            "es": "Nueva clase"
           },
           "description": {
             "en": "Tick the classes to react to. Nothing ticked means any class.",
-            "fr": "Cochez les classes auxquelles réagir. Rien de coché signifie n'importe quelle classe."
+            "fr": "Cochez les classes auxquelles réagir. Rien de coché signifie n'importe quelle classe.",
+            "de": "Wählen Sie die Klassen aus, auf die reagiert werden soll. Nichts ausgewählt bedeutet jede Klasse.",
+            "es": "Marque las clases a las que reaccionar. No marcar ninguna equivale a cualquier clase."
           },
           "required": false,
           "options": [
@@ -840,42 +1096,54 @@
               "value": "1",
               "label": {
                 "en": "1 — Good",
-                "fr": "1 — Bon"
+                "fr": "1 — Bon",
+                "de": "1 — Gut",
+                "es": "1 — Buena"
               }
             },
             {
               "value": "2",
               "label": {
                 "en": "2 — Fair",
-                "fr": "2 — Moyen"
+                "fr": "2 — Moyen",
+                "de": "2 — Ausreichend",
+                "es": "2 — Razonablemente buena"
               }
             },
             {
               "value": "3",
               "label": {
                 "en": "3 — Moderate",
-                "fr": "3 — Dégradé"
+                "fr": "3 — Dégradé",
+                "de": "3 — Mäßig",
+                "es": "3 — Regular"
               }
             },
             {
               "value": "4",
               "label": {
                 "en": "4 — Poor",
-                "fr": "4 — Mauvais"
+                "fr": "4 — Mauvais",
+                "de": "4 — Schlecht",
+                "es": "4 — Desfavorable"
               }
             },
             {
               "value": "5",
               "label": {
                 "en": "5 — Very poor",
-                "fr": "5 — Très mauvais"
+                "fr": "5 — Très mauvais",
+                "de": "5 — Sehr schlecht",
+                "es": "5 — Muy desfavorable"
               }
             },
             {
               "value": "6",
               "label": {
                 "en": "6 — Extremely poor",
-                "fr": "6 — Extrêmement mauvais"
+                "fr": "6 — Extrêmement mauvais",
+                "de": "6 — Extrem schlecht",
+                "es": "6 — Extremadamente desfavorable"
               }
             }
           ]
@@ -885,11 +1153,15 @@
           "type": "select",
           "label": {
             "en": "Direction",
-            "fr": "Sens"
+            "fr": "Sens",
+            "de": "Richtung",
+            "es": "Sentido"
           },
           "description": {
             "en": "Leave empty for both.",
-            "fr": "Laissez vide pour les deux sens."
+            "fr": "Laissez vide pour les deux sens.",
+            "de": "Leer lassen für beide Richtungen.",
+            "es": "Déjelo vacío para ambos sentidos."
           },
           "required": false,
           "options": [
@@ -897,14 +1169,18 @@
               "value": "rising",
               "label": {
                 "en": "Worsening",
-                "fr": "À la dégradation"
+                "fr": "À la dégradation",
+                "de": "Verschlechterung",
+                "es": "Empeora"
               }
             },
             {
               "value": "falling",
               "label": {
                 "en": "Improving",
-                "fr": "À l'amélioration"
+                "fr": "À l'amélioration",
+                "de": "Verbesserung",
+                "es": "Mejora"
               }
             }
           ]
@@ -916,7 +1192,9 @@
           "type": "string",
           "label": {
             "en": "Location name",
-            "fr": "Nom du lieu"
+            "fr": "Nom du lieu",
+            "de": "Name des Orts",
+            "es": "Nombre del lugar"
           }
         },
         {
@@ -924,7 +1202,9 @@
           "type": "string",
           "label": {
             "en": "New class (1-6)",
-            "fr": "Nouvelle classe (1-6)"
+            "fr": "Nouvelle classe (1-6)",
+            "de": "Neue Klasse (1-6)",
+            "es": "Nueva clase (1-6)"
           }
         },
         {
@@ -932,7 +1212,9 @@
           "type": "string",
           "label": {
             "en": "New class, in words",
-            "fr": "Nouvelle classe, en toutes lettres"
+            "fr": "Nouvelle classe, en toutes lettres",
+            "de": "Neue Klasse, ausgeschrieben",
+            "es": "Nueva clase, en palabras"
           }
         },
         {
@@ -940,7 +1222,9 @@
           "type": "string",
           "label": {
             "en": "Previous class (1-6)",
-            "fr": "Classe précédente (1-6)"
+            "fr": "Classe précédente (1-6)",
+            "de": "Vorherige Klasse (1-6)",
+            "es": "Clase anterior (1-6)"
           }
         },
         {
@@ -948,7 +1232,9 @@
           "type": "string",
           "label": {
             "en": "Previous class, in words",
-            "fr": "Classe précédente, en toutes lettres"
+            "fr": "Classe précédente, en toutes lettres",
+            "de": "Vorherige Klasse, ausgeschrieben",
+            "es": "Clase anterior, en palabras"
           }
         },
         {
@@ -956,7 +1242,9 @@
           "type": "string",
           "label": {
             "en": "Direction (rising / falling)",
-            "fr": "Sens (rising / falling)"
+            "fr": "Sens (rising / falling)",
+            "de": "Richtung (rising / falling)",
+            "es": "Sentido (rising / falling)"
           }
         },
         {
@@ -964,7 +1252,9 @@
           "type": "string",
           "label": {
             "en": "Hour of the analysis",
-            "fr": "Heure de l'analyse"
+            "fr": "Heure de l'analyse",
+            "de": "Uhrzeit der Analyse",
+            "es": "Hora del análisis"
           }
         },
         {
@@ -972,7 +1262,9 @@
           "type": "string",
           "label": {
             "en": "Pollutant (key)",
-            "fr": "Polluant (clé)"
+            "fr": "Polluant (clé)",
+            "de": "Schadstoff (Schlüssel)",
+            "es": "Contaminante (clave)"
           }
         },
         {
@@ -980,7 +1272,9 @@
           "type": "string",
           "label": {
             "en": "Pollutant",
-            "fr": "Polluant"
+            "fr": "Polluant",
+            "de": "Schadstoff",
+            "es": "Contaminante"
           }
         },
         {
@@ -988,7 +1282,9 @@
           "type": "number",
           "label": {
             "en": "Concentration (µg/m³)",
-            "fr": "Concentration (µg/m³)"
+            "fr": "Concentration (µg/m³)",
+            "de": "Konzentration (µg/m³)",
+            "es": "Concentración (µg/m³)"
           }
         },
         {
@@ -996,7 +1292,9 @@
           "type": "string",
           "label": {
             "en": "Ready-made sentence",
-            "fr": "Phrase toute faite"
+            "fr": "Phrase toute faite",
+            "de": "Fertiger Satz",
+            "es": "Frase lista"
           }
         }
       ]
@@ -1007,11 +1305,15 @@
       "key": "get_air_quality",
       "label": {
         "en": "Read the air quality",
-        "fr": "Lire la qualité de l'air"
+        "fr": "Lire la qualité de l'air",
+        "de": "Luftqualität lesen",
+        "es": "Leer la calidad del aire"
       },
       "description": {
         "en": "Reads a location now and hands the class, the dominant pollutant and a ready-made sentence to the next actions of the scene.",
-        "fr": "Lit un lieu maintenant et transmet la classe, le polluant dominant et une phrase toute faite aux actions suivantes de la scène."
+        "fr": "Lit un lieu maintenant et transmet la classe, le polluant dominant et une phrase toute faite aux actions suivantes de la scène.",
+        "de": "Liest einen Ort sofort und übergibt die Klasse, den dominierenden Schadstoff und einen fertigen Satz an die nächsten Aktionen der Szene.",
+        "es": "Lee un lugar ahora y pasa la clase, el contaminante dominante y una frase lista a las siguientes acciones de la escena."
       },
       "timeout_seconds": 30,
       "fields": [
@@ -1021,11 +1323,15 @@
           "source": "devices",
           "label": {
             "en": "Location",
-            "fr": "Lieu"
+            "fr": "Lieu",
+            "de": "Ort",
+            "es": "Lugar"
           },
           "description": {
             "en": "The air quality device to read.",
-            "fr": "L'appareil qualité de l'air à lire."
+            "fr": "L'appareil qualité de l'air à lire.",
+            "de": "Das zu lesende Luftqualitätsgerät.",
+            "es": "El dispositivo de calidad del aire que se leerá."
           },
           "required": true
         },
@@ -1034,11 +1340,15 @@
           "type": "select",
           "label": {
             "en": "Pollutant read",
-            "fr": "Polluant lu"
+            "fr": "Polluant lu",
+            "de": "Gelesener Schadstoff",
+            "es": "Contaminante leído"
           },
           "description": {
             "en": "\"Overall index\" reports the worst pollutant of the moment and names it. Pick a pollutant to read that one only.",
-            "fr": "« Indice global » rapporte le pire polluant du moment et le nomme. Choisissez un polluant pour ne lire que celui-là."
+            "fr": "« Indice global » rapporte le pire polluant du moment et le nomme. Choisissez un polluant pour ne lire que celui-là.",
+            "de": "„Gesamtindex“ meldet den derzeit schlechtesten Schadstoff und nennt ihn. Wählen Sie einen Schadstoff, um nur diesen zu lesen.",
+            "es": "«Índice global» informa del peor contaminante del momento y lo nombra. Elija un contaminante para leer solo ese."
           },
           "required": false,
           "default": "overall",
@@ -1047,42 +1357,54 @@
               "value": "overall",
               "label": {
                 "en": "Overall index",
-                "fr": "Indice global"
+                "fr": "Indice global",
+                "de": "Gesamtindex",
+                "es": "Índice global"
               }
             },
             {
               "value": "pm2_5",
               "label": {
                 "en": "PM2.5",
-                "fr": "PM2,5"
+                "fr": "PM2,5",
+                "de": "PM2,5",
+                "es": "PM2,5"
               }
             },
             {
               "value": "pm10",
               "label": {
                 "en": "PM10",
-                "fr": "PM10"
+                "fr": "PM10",
+                "de": "PM10",
+                "es": "PM10"
               }
             },
             {
               "value": "nitrogen_dioxide",
               "label": {
                 "en": "Nitrogen dioxide (NO₂)",
-                "fr": "Dioxyde d'azote (NO₂)"
+                "fr": "Dioxyde d'azote (NO₂)",
+                "de": "Stickstoffdioxid (NO₂)",
+                "es": "Dióxido de nitrógeno (NO₂)"
               }
             },
             {
               "value": "ozone",
               "label": {
                 "en": "Ozone (O₃)",
-                "fr": "Ozone (O₃)"
+                "fr": "Ozone (O₃)",
+                "de": "Ozon (O₃)",
+                "es": "Ozono (O₃)"
               }
             },
             {
               "value": "sulphur_dioxide",
               "label": {
                 "en": "Sulphur dioxide (SO₂)",
-                "fr": "Dioxyde de soufre (SO₂)"
+                "fr": "Dioxyde de soufre (SO₂)",
+                "de": "Schwefeldioxid (SO₂)",
+                "es": "Dióxido de azufre (SO₂)"
               }
             }
           ]
@@ -1094,7 +1416,9 @@
           "type": "number",
           "label": {
             "en": "Index class (1-6)",
-            "fr": "Classe de l'indice (1-6)"
+            "fr": "Classe de l'indice (1-6)",
+            "de": "Indexklasse (1-6)",
+            "es": "Clase del índice (1-6)"
           }
         },
         {
@@ -1102,7 +1426,9 @@
           "type": "string",
           "label": {
             "en": "Class, in words",
-            "fr": "Classe, en toutes lettres"
+            "fr": "Classe, en toutes lettres",
+            "de": "Klasse, ausgeschrieben",
+            "es": "Clase, en palabras"
           }
         },
         {
@@ -1110,7 +1436,9 @@
           "type": "string",
           "label": {
             "en": "Pollutant read (key)",
-            "fr": "Polluant lu (clé)"
+            "fr": "Polluant lu (clé)",
+            "de": "Gelesener Schadstoff (Schlüssel)",
+            "es": "Contaminante leído (clave)"
           }
         },
         {
@@ -1118,7 +1446,9 @@
           "type": "string",
           "label": {
             "en": "Pollutant read",
-            "fr": "Polluant lu"
+            "fr": "Polluant lu",
+            "de": "Gelesener Schadstoff",
+            "es": "Contaminante leído"
           }
         },
         {
@@ -1126,7 +1456,9 @@
           "type": "number",
           "label": {
             "en": "Concentration (µg/m³)",
-            "fr": "Concentration (µg/m³)"
+            "fr": "Concentration (µg/m³)",
+            "de": "Konzentration (µg/m³)",
+            "es": "Concentración (µg/m³)"
           }
         },
         {
@@ -1134,7 +1466,9 @@
           "type": "string",
           "label": {
             "en": "Location name",
-            "fr": "Nom du lieu"
+            "fr": "Nom du lieu",
+            "de": "Name des Orts",
+            "es": "Nombre del lugar"
           }
         },
         {
@@ -1142,7 +1476,9 @@
           "type": "string",
           "label": {
             "en": "Hour of the analysis",
-            "fr": "Heure de l'analyse"
+            "fr": "Heure de l'analyse",
+            "de": "Uhrzeit der Analyse",
+            "es": "Hora del análisis"
           }
         },
         {
@@ -1150,11 +1486,15 @@
           "type": "string",
           "label": {
             "en": "Ready-made sentence",
-            "fr": "Phrase toute faite"
+            "fr": "Phrase toute faite",
+            "de": "Fertiger Satz",
+            "es": "Frase lista"
           },
           "description": {
             "en": "\"Air quality in Nantes: index 4/6 (Poor), dominant Ozone (O₃).\" — to drop straight into a notification.",
-            "fr": "« Qualité de l'air à Nantes : indice 4/6 (Mauvais), dominant Ozone (O₃). » — à glisser tel quel dans une notification."
+            "fr": "« Qualité de l'air à Nantes : indice 4/6 (Mauvais), dominant Ozone (O₃). » — à glisser tel quel dans une notification.",
+            "de": "„Luftqualität in Nantes: Index 4/6 (Schlecht), dominierend Ozon (O₃).“ — direkt für eine Benachrichtigung.",
+            "es": "«Calidad del aire en Nantes: índice 4/6 (Desfavorable), dominante Ozono (O₃).», para usar tal cual en una notificación."
           }
         }
       ]
@@ -1163,11 +1503,15 @@
       "key": "refresh_air_quality",
       "label": {
         "en": "Refresh the air quality data",
-        "fr": "Rafraîchir les données de qualité de l'air"
+        "fr": "Rafraîchir les données de qualité de l'air",
+        "de": "Luftqualitätsdaten aktualisieren",
+        "es": "Actualizar los datos de calidad del aire"
       },
       "description": {
         "en": "Reads the analysis again and republishes the states, without waiting for the next refresh. Leave the location empty to refresh them all.",
-        "fr": "Relit l'analyse et republie les états, sans attendre le prochain rafraîchissement. Laissez le lieu vide pour tous les rafraîchir."
+        "fr": "Relit l'analyse et republie les états, sans attendre le prochain rafraîchissement. Laissez le lieu vide pour tous les rafraîchir.",
+        "de": "Liest die Analyse erneut und veröffentlicht die Zustände neu, ohne auf die nächste Aktualisierung zu warten. Lassen Sie den Ort leer, um alle zu aktualisieren.",
+        "es": "Vuelve a leer el análisis y republica los estados, sin esperar a la próxima actualización. Deje el lugar vacío para actualizarlos todos."
       },
       "timeout_seconds": 60,
       "fields": [
@@ -1177,11 +1521,15 @@
           "source": "devices",
           "label": {
             "en": "Location",
-            "fr": "Lieu"
+            "fr": "Lieu",
+            "de": "Ort",
+            "es": "Lugar"
           },
           "description": {
             "en": "Empty means every configured location.",
-            "fr": "Vide signifie tous les lieux configurés."
+            "fr": "Vide signifie tous les lieux configurés.",
+            "de": "Leer bedeutet alle konfigurierten Orte.",
+            "es": "Vacío equivale a todos los lugares configurados."
           },
           "required": false
         }
@@ -1192,7 +1540,9 @@
           "type": "number",
           "label": {
             "en": "Locations refreshed",
-            "fr": "Lieux rafraîchis"
+            "fr": "Lieux rafraîchis",
+            "de": "Aktualisierte Orte",
+            "es": "Lugares actualizados"
           }
         },
         {
@@ -1200,7 +1550,9 @@
           "type": "number",
           "label": {
             "en": "Locations in error",
-            "fr": "Lieux en échec"
+            "fr": "Lieux en échec",
+            "de": "Fehlerhafte Orte",
+            "es": "Lugares con error"
           }
         }
       ]

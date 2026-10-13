@@ -52,7 +52,7 @@ import {
   pollutantName,
 } from '../airQuality/scale.js';
 import { formatMeasuredAt } from '../datetime.js';
-import { DEFAULT_LANGUAGE, inLanguage } from '../language.js';
+import { byLanguage, DEFAULT_LANGUAGE, inLanguage } from '../language.js';
 import { shortReason } from '../reason.js';
 import { publishIndexEvents } from '../scenes/indexEvents.js';
 import { nudgeWidgets } from '../widgets/keys.js';
@@ -126,20 +126,50 @@ const CONCENTRATION_CATEGORIES = {
 
 /** Names of the features that are not about one pollutant. */
 const FEATURE_NAMES = {
-  [FEATURE.INDEX]: { en: 'Air quality index', fr: "Indice de qualité de l'air" },
-  [FEATURE.INDEX_TEXT]: { en: 'Air quality (text)', fr: "Qualité de l'air (texte)" },
-  [FEATURE.DOMINANT_POLLUTANT]: { en: 'Dominant pollutant', fr: 'Polluant dominant' },
-  [FEATURE.MEASURED_AT]: { en: 'Last data update', fr: 'Dernière mise à jour des données' },
+  [FEATURE.INDEX]: {
+    en: 'Air quality index',
+    fr: "Indice de qualité de l'air",
+    de: 'Luftqualitätsindex',
+    es: 'Índice de calidad del aire',
+  },
+  [FEATURE.INDEX_TEXT]: {
+    en: 'Air quality (text)',
+    fr: "Qualité de l'air (texte)",
+    de: 'Luftqualität (Text)',
+    es: 'Calidad del aire (texto)',
+  },
+  [FEATURE.DOMINANT_POLLUTANT]: {
+    en: 'Dominant pollutant',
+    fr: 'Polluant dominant',
+    de: 'Dominierender Schadstoff',
+    es: 'Contaminante dominante',
+  },
+  [FEATURE.MEASURED_AT]: {
+    en: 'Last data update',
+    fr: 'Dernière mise à jour des données',
+    de: 'Letzte Datenaktualisierung',
+    es: 'Última actualización de los datos',
+  },
+};
+
+/** The name of the device itself, before the name of its location. */
+const DEVICE_NAME = {
+  en: 'Air quality',
+  fr: "Qualité de l'air",
+  de: 'Luftqualität',
+  es: 'Calidad del aire',
 };
 
 /** How the name of a pollutant becomes the name of its sub-index feature. */
 const SUB_INDEX_FEATURE_NAME = {
   en: (name) => `${name} sub-index`,
   fr: (name) => `Sous-indice ${name}`,
+  de: (name) => `Teilindex ${name}`,
+  es: (name) => `Subíndice ${name}`,
 };
 
 /** What the "dominant pollutant" feature says when the air is good. */
-const NO_DOMINANT_POLLUTANT = { en: 'None', fr: 'Aucun' };
+const NO_DOMINANT_POLLUTANT = { en: 'None', fr: 'Aucun', de: 'Keiner', es: 'Ninguno' };
 
 /** External ids of the device of a location. */
 export function deviceExternalIds(gladys, location) {
@@ -241,7 +271,7 @@ export function concentrationFeatureId(ids, pollutant) {
  * The names are written in the configured language and nowhere else: a device
  * name and a feature name are plain strings the core copies into its own tables
  * when the user creates the device, so this is the ONE place where the
- * integration has to pick a language instead of handing Gladys `{ en, fr }`.
+ * integration has to pick a language instead of handing Gladys `{ en, fr, de, es }`.
  * @param {import('@gladysassistant/integration-sdk').GladysIntegration} gladys
  * @param {import('../locations.js').Location} location
  * @param {string} [language] one of LANGUAGES (see src/language.js)
@@ -249,7 +279,7 @@ export function concentrationFeatureId(ids, pollutant) {
 export function buildDevice(gladys, location, language = DEFAULT_LANGUAGE) {
   const ids = deviceExternalIds(gladys, location);
   const featureName = (key) => inLanguage(FEATURE_NAMES[key], language);
-  const deviceName = language === 'en' ? 'Air quality' : "Qualité de l'air";
+  const deviceName = inLanguage(DEVICE_NAME, language);
 
   return {
     name: `${deviceName} — ${location.name}`,
@@ -464,25 +494,38 @@ function failureDetail(err) {
   return {
     en: `air quality refresh failed: ${reason}`,
     fr: `le rafraîchissement de la qualité de l'air a échoué : ${reason}`,
+    de: `Aktualisierung der Luftqualität fehlgeschlagen: ${reason}`,
+    es: `la actualización de la calidad del aire ha fallado: ${reason}`,
   };
 }
+
+/** How each language puts a name before what is said about it. */
+const NAMED = {
+  en: (name, text) => `${name}: ${text}`,
+  fr: (name, text) => `${name} : ${text}`,
+  de: (name, text) => `${name}: ${text}`,
+  es: (name, text) => `${name}: ${text}`,
+};
 
 /** The same reason, named, for the one-line connection status. */
 function failureMessage(err, locationName) {
   const detail = failureDetail(err);
-  return {
-    en: `${locationName}: ${detail.en}`,
-    fr: `${locationName} : ${detail.fr}`,
-  };
+  return byLanguage((language) => inLanguage(NAMED, language)(locationName, detail[language]));
 }
+
+/** "index" and "dominant", as the test report words them. */
+const INDEX_WORD = { en: 'index', fr: 'indice', de: 'Index', es: 'índice' };
+const DOMINANT_WORD = { en: 'dominant', fr: 'dominant', de: 'dominierend', es: 'dominante' };
 
 const NO_LOCATION_MESSAGE = {
   en: 'No location with usable coordinates yet. Add one with "Add a location".',
   fr: 'Aucun lieu avec des coordonnées utilisables. Ajoutez-en un avec « Ajouter un lieu ».',
+  de: 'Noch kein Ort mit verwendbaren Koordinaten. Fügen Sie einen mit „Ort hinzufügen“ hinzu.',
+  es: 'Todavía no hay ningún lugar con coordenadas utilizables. Añada uno con «Añadir un lugar».',
 };
 
 /**
- * A header plus one line per location, in both languages — EXACTLY the format
+ * A header plus one line per location, in every language — EXACTLY the format
  * of the location listing (`• n. name — detail`, built by the same
  * `locationLine`), because both actions answer about the same list under the
  * same numbers.
@@ -492,10 +535,7 @@ function report(header, lines) {
     lines
       .map((line) => locationLine(line.position, line.name, line[language]))
       .join(LOCATION_LINE_SEPARATOR);
-  return {
-    en: `${header.en}${LOCATION_LINE_SEPARATOR}${join('en')}`,
-    fr: `${header.fr}${LOCATION_LINE_SEPARATOR}${join('fr')}`,
-  };
+  return byLanguage((language) => `${header[language]}${LOCATION_LINE_SEPARATOR}${join(language)}`);
 }
 
 /**
@@ -540,15 +580,21 @@ async function refreshCycle(gladys, config, locations) {
   // Only the first reason is spelled out: the status line is one line, and
   // two stack traces in it help nobody.
   const first = failureMessage(failures[0].error, failures[0].location.name);
+  const count = failures.length - 1;
   const others =
-    failures.length > 1
+    count > 0
       ? {
-          en: ` (+${failures.length - 1} other location(s) failing)`,
-          fr: ` (+${failures.length - 1} autre(s) lieu(x) en échec)`,
+          en: ` (+${count} other location(s) failing)`,
+          fr: ` (+${count} autre(s) lieu(x) en échec)`,
+          de: ` (+${count} weitere(r) Ort(e) fehlerhaft)`,
+          es: ` (+${count} lugar(es) más con error)`,
         }
-      : { en: '', fr: '' };
+      : {};
   await gladys
-    .setConnectionStatus(false, { en: `${first.en}${others.en}`, fr: `${first.fr}${others.fr}` })
+    .setConnectionStatus(
+      false,
+      byLanguage((language) => `${first[language]}${others[language] ?? ''}`),
+    )
     .catch(() => {});
   return failures;
 }
@@ -609,17 +655,18 @@ export const airQualityStation = {
           return {
             en: 'no value returned for any pollutant',
             fr: 'aucune valeur retournée pour aucun polluant',
+            de: 'für keinen Schadstoff wurde ein Wert geliefert',
+            es: 'no se ha devuelto ningún valor para ningún contaminante',
           };
         }
         const dominant = reading.overall.pollutant;
-        return {
-          en:
-            `index ${level}/${INDEX_MAX} (${INDEX_LABELS[level].en})` +
-            `${dominant ? `, dominant ${pollutantName(dominant, 'en')}` : ''} — ${reading.provider}`,
-          fr:
-            `indice ${level}/${INDEX_MAX} (${INDEX_LABELS[level].fr})` +
-            `${dominant ? `, dominant ${pollutantName(dominant, 'fr')}` : ''} — ${reading.provider}`,
-        };
+        return byLanguage(
+          (language) =>
+            `${inLanguage(INDEX_WORD, language)} ${level}/${INDEX_MAX} ` +
+            `(${inLanguage(INDEX_LABELS[level], language)})` +
+            `${dominant ? `, ${inLanguage(DOMINANT_WORD, language)} ${pollutantName(dominant, language)}` : ''}` +
+            ` — ${reading.provider}`,
+        );
       });
 
       // "Provider OK" only when it actually is: the header counts the locations
@@ -629,10 +676,14 @@ export const airQualityStation = {
           ? {
               en: `Air quality provider OK — ${locations.length} location(s):`,
               fr: `Fournisseur de qualité de l'air OK — ${locations.length} lieu(x) :`,
+              de: `Luftqualitätsquelle OK — ${locations.length} Ort(e):`,
+              es: `Fuente de calidad del aire OK — ${locations.length} lugar(es):`,
             }
           : {
               en: `Air quality provider — ${failed} of ${locations.length} location(s) failing:`,
               fr: `Fournisseur de qualité de l'air — ${failed} lieu(x) en échec sur ${locations.length} :`,
+              de: `Luftqualitätsquelle — ${failed} von ${locations.length} Ort(en) fehlerhaft:`,
+              es: `Fuente de calidad del aire — ${failed} de ${locations.length} lugar(es) con error:`,
             };
       return report(header, lines);
     },

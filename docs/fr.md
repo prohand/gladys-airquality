@@ -280,7 +280,7 @@ m'envoyer `{{summary}}` ».
 
 ## Réglages
 
-- **Langue du nom des appareils** — français par défaut. Tout ce que
+- **Langue du nom des appareils** — français par défaut (anglais, allemand et espagnol aussi). Tout ce que
   l'intégration affiche suit déjà la langue de votre compte Gladys, mais le nom
   d'un appareil et de ses fonctionnalités est enregistré tel qu'il est publié :
   il faut donc le choisir ici. Un appareil déjà ajouté conserve les noms avec

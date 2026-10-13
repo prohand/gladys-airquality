@@ -269,7 +269,7 @@ Example: "every day at 7 am → Read the air quality (Home) → send me `{{summa
 
 ## Settings
 
-- **Language of the device names** — French by default. Everything the
+- **Language of the device names** — French by default (English, German and Spanish too). Everything the
   integration displays already follows your Gladys account language, but the
   name of a device and of its features is stored as it is published, so it has
   to be chosen here. A device already added keeps the names it was created with;

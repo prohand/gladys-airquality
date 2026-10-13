@@ -11,7 +11,13 @@ import {
   normalizeConfig,
   POLL_FREQUENCY_LIMITS,
 } from '../src/config.js';
-import { DEFAULT_LANGUAGE, inLanguage, LANGUAGES, normalizeLanguage } from '../src/language.js';
+import {
+  byLanguage,
+  DEFAULT_LANGUAGE,
+  inLanguage,
+  LANGUAGES,
+  normalizeLanguage,
+} from '../src/language.js';
 import { LOCATIONS_KEY } from '../src/locations.js';
 
 test('an empty configuration is the defaults, with no location', () => {
@@ -41,15 +47,25 @@ test('the refresh interval is clamped to the bounds the manifest declares', () =
 test('the device language falls back rather than producing untranslated names', () => {
   assert.equal(normalizeLanguage('en'), 'en');
   assert.equal(normalizeLanguage('fr-FR'), 'fr');
-  assert.equal(normalizeLanguage('de'), DEFAULT_LANGUAGE);
+  assert.equal(normalizeLanguage('de'), 'de');
+  assert.equal(normalizeLanguage('es-ES'), 'es');
+  assert.equal(normalizeLanguage('it'), DEFAULT_LANGUAGE);
   assert.equal(normalizeLanguage(undefined), DEFAULT_LANGUAGE);
   assert.ok(LANGUAGES.includes(DEFAULT_LANGUAGE));
 });
 
-test('a multi-language entry falls back to the default language then to English', () => {
+test('a multi-language entry falls back to English', () => {
   assert.equal(inLanguage({ en: 'Good', fr: 'Bon' }, 'fr'), 'Bon');
-  assert.equal(inLanguage({ en: 'Good', fr: 'Bon' }, 'de'), 'Bon');
-  assert.equal(inLanguage({ en: 'Good' }, 'de'), 'Good');
+  assert.equal(inLanguage({ en: 'Good', fr: 'Bon', de: 'Gut' }, 'de'), 'Gut');
+  assert.equal(inLanguage({ en: 'Good', fr: 'Bon' }, 'es'), 'Good');
+  assert.equal(inLanguage({ en: 'Good', fr: 'Bon' }, 'it'), 'Good');
+});
+
+test('a message built by language carries every supported language', () => {
+  const message = byLanguage((language) => `<${language}>`);
+  assert.deepEqual(Object.keys(message).sort(), ['de', 'en', 'es', 'fr']);
+  assert.equal(message.es, '<es>');
+  assert.deepEqual([...LANGUAGES].sort(), ['de', 'en', 'es', 'fr']);
 });
 
 test('a configuration with one usable location is configured', () => {

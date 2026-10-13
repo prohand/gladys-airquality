@@ -12,9 +12,10 @@ import {
   INDEX_MAX,
   INDEX_MIN,
   overallIndex,
+  POLLUTANT_NAMES,
   POLLUTANTS,
-  pollutantName,
 } from '../src/airQuality/scale.js';
+import { LANGUAGES } from '../src/language.js';
 
 test('a concentration below the first bound is "good"', () => {
   assert.equal(concentrationToIndex('pm2_5', 0), INDEX_LEVELS.GOOD);
@@ -61,12 +62,14 @@ test('every pollutant of the scale has bands, a name and a label per class', () 
       null,
       `${pollutant} has no thresholds in the scale`,
     );
-    assert.notEqual(pollutantName(pollutant, 'fr'), pollutant, `${pollutant} has no French name`);
-    assert.notEqual(pollutantName(pollutant, 'en'), pollutant, `${pollutant} has no English name`);
+    for (const language of LANGUAGES) {
+      assert.ok(POLLUTANT_NAMES[pollutant]?.[language], `${pollutant} has no ${language} name`);
+    }
   }
   for (let level = INDEX_MIN; level <= INDEX_MAX; level += 1) {
-    assert.ok(INDEX_LABELS[level]?.fr, `class ${level} has no French label`);
-    assert.ok(INDEX_LABELS[level]?.en, `class ${level} has no English label`);
+    for (const language of LANGUAGES) {
+      assert.ok(INDEX_LABELS[level]?.[language], `class ${level} has no ${language} label`);
+    }
   }
 });
 

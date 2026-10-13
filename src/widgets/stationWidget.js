@@ -46,16 +46,30 @@ const MAX_CHART_SERIES = 4;
 const NO_LOCATION = {
   en: 'Pick a location in the widget settings.',
   fr: 'Choisissez un lieu dans les réglages du widget.',
+  de: 'Wählen Sie in den Widget-Einstellungen einen Ort aus.',
+  es: 'Elija un lugar en la configuración del widget.',
 };
 const NO_DATA = {
   en: 'No air quality data for this location right now.',
   fr: "Aucune donnée de qualité de l'air pour ce lieu actuellement.",
+  de: 'Derzeit keine Luftqualitätsdaten für diesen Ort.',
+  es: 'No hay datos de calidad del aire para este lugar en este momento.',
 };
-const OVERALL_LABEL = { en: 'Air quality', fr: "Qualité de l'air" };
-const FILTERED_LABEL = { en: 'Your index', fr: 'Votre indice' };
-const DOMINANT_LABEL = { en: 'Dominant', fr: 'Dominant' };
-const UNAVAILABLE = { en: 'no value', fr: 'pas de valeur' };
-const CHART_TITLE = { en: 'Today and tomorrow', fr: "Aujourd'hui et demain" };
+const OVERALL_LABEL = {
+  en: 'Air quality',
+  fr: "Qualité de l'air",
+  de: 'Luftqualität',
+  es: 'Calidad del aire',
+};
+const FILTERED_LABEL = { en: 'Your index', fr: 'Votre indice', de: 'Ihr Index', es: 'Su índice' };
+const DOMINANT_LABEL = { en: 'Dominant', fr: 'Dominant', de: 'Dominierend', es: 'Dominante' };
+const UNAVAILABLE = { en: 'no value', fr: 'pas de valeur', de: 'kein Wert', es: 'sin valor' };
+const CHART_TITLE = {
+  en: 'Today and tomorrow',
+  fr: "Aujourd'hui et demain",
+  de: 'Heute und morgen',
+  es: 'Hoy y mañana',
+};
 
 /**
  * The pollutants a widget instance follows: the ticked ones, or all of them.
@@ -301,19 +315,32 @@ export const stationWidget = {
   /**
    * The `refresh` pill: re-read this instance's location and republish its
    * states.
-   * @returns {Promise<{ en: string, fr: string }>} the toast shown to the user
+   * @returns {Promise<{ en: string, fr: string, de: string, es: string }>} the
+   *   toast shown to the user
    */
   async onAction(gladys, config, actionKey, params, { settings } = {}) {
     const location = findLocationByDeviceId(gladys, config, settings?.location);
     if (!location) {
-      return { en: 'No location to refresh.', fr: 'Aucun lieu à rafraîchir.' };
+      return {
+        en: 'No location to refresh.',
+        fr: 'Aucun lieu à rafraîchir.',
+        de: 'Kein Ort zum Aktualisieren.',
+        es: 'No hay ningún lugar que actualizar.',
+      };
     }
     const { failed } = await refreshLocations(gladys, [location], config.language);
     return failed === 0
-      ? { en: `${location.name} refreshed.`, fr: `${location.name} rafraîchi.` }
+      ? {
+          en: `${location.name} refreshed.`,
+          fr: `${location.name} rafraîchi.`,
+          de: `${location.name} aktualisiert.`,
+          es: `${location.name} actualizado.`,
+        }
       : {
           en: `Could not refresh ${location.name}.`,
           fr: `Impossible de rafraîchir ${location.name}.`,
+          de: `${location.name} konnte nicht aktualisiert werden.`,
+          es: `No se ha podido actualizar ${location.name}.`,
         };
   },
 };
