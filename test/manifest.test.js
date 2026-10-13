@@ -235,10 +235,16 @@ test('a section is a heading, never a value', () => {
   }
 });
 
-test('every label and description is written in both languages', () => {
+// The languages every text of the manifest is written in: Gladys' own UI
+// languages, which are also the ones the code answers in (src/language.js).
+const TEXT_LANGUAGES = ['en', 'fr', 'de', 'es'];
+
+test('every label and description is written in every language', () => {
   const bilingual = (value, path) => {
-    assert.equal(typeof value?.en, 'string', `${path}: missing English`);
-    assert.equal(typeof value?.fr, 'string', `${path}: missing French`);
+    for (const language of TEXT_LANGUAGES) {
+      assert.equal(typeof value?.[language], 'string', `${path}: missing "${language}"`);
+      assert.ok(value[language].trim() !== '', `${path}: empty "${language}"`);
+    }
   };
 
   bilingual(manifest.description, 'manifest.description');
@@ -499,6 +505,31 @@ test('a scene variable or output is a scalar, under a unique key', () => {
   }
 });
 
+test('no multi-language text anywhere in the manifest misses a language', () => {
+  // Walks the whole file rather than a list of known places: a text added to a
+  // new field must not slip through because the test did not know the field.
+  const walk = (node, path) => {
+    if (Array.isArray(node)) {
+      node.forEach((child, index) => walk(child, `${path}[${index}]`));
+      return;
+    }
+    if (!node || typeof node !== 'object') {
+      return;
+    }
+    if (typeof node.en === 'string') {
+      for (const language of TEXT_LANGUAGES) {
+        assert.equal(typeof node[language], 'string', `${path}: missing "${language}"`);
+      }
+      return;
+    }
+    for (const [key, child] of Object.entries(node)) {
+      walk(child, path ? `${path}.${key}` : key);
+    }
+  };
+  walk(manifest, '');
+  assert.deepEqual([...LANGUAGES].sort(), [...TEXT_LANGUAGES].sort());
+});
+
 test('the class filters offer exactly the 1-6 scale, named as the code names it', () => {
   const scale = Array.from({ length: INDEX_MAX - INDEX_MIN + 1 }, (_, i) => String(i + INDEX_MIN));
   for (const declared of manifest.scene_triggers ?? []) {
@@ -509,7 +540,7 @@ test('the class filters offer exactly the 1-6 scale, named as the code names it'
     // multi_select stores option values, and an option value is a string.
     assert.deepEqual(optionValues(level), scale);
     for (const option of level.options) {
-      for (const language of ['en', 'fr']) {
+      for (const language of TEXT_LANGUAGES) {
         assert.ok(
           option.label[language].endsWith(INDEX_LABELS[option.value][language]),
           `trigger "${declared.key}": class ${option.value} is not named as the code names it`,

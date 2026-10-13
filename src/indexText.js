@@ -5,11 +5,11 @@
 // outputs of a scene action and the rows of a dashboard widget. They all come
 // here, so "4/6 (Mauvais)" is written the same way everywhere and a wording fix
 // lands in all of them at once. The words themselves are the official ones
-// (`INDEX_LABELS` in src/airQuality/scale.js: the EEA wording in English, the
-// ATMO wording in French), so a card never contradicts the TEXT feature of the
+// (`INDEX_LABELS` in src/airQuality/scale.js: the EEA wording in English and
+// German, the ATMO wording in French, the ICA wording in Spanish), so a card never contradicts the TEXT feature of the
 // device next to it.
 //
-// Each helper takes a language rather than returning `{ en, fr }`, because
+// Each helper takes a language rather than returning `{ en, fr, de, es }`, because
 // everything it feeds is a PLAIN STRING the core stores or substitutes as it
 // is: a scene event variable, an action output, a widget row. For the events
 // and the action outputs that language is `config.language` — the same one the
@@ -37,16 +37,24 @@ const OVERALL_SENTENCE = {
     `Air quality in ${place}: index ${level}${dominant ? `, dominant ${dominant}` : ''}.`,
   fr: (place, level, dominant) =>
     `Qualité de l'air à ${place} : indice ${level}${dominant ? `, dominant ${dominant}` : ''}.`,
+  de: (place, level, dominant) =>
+    `Luftqualität in ${place}: Index ${level}${dominant ? `, dominierend ${dominant}` : ''}.`,
+  es: (place, level, dominant) =>
+    `Calidad del aire en ${place}: índice ${level}${dominant ? `, dominante ${dominant}` : ''}.`,
 };
 
 const POLLUTANT_SENTENCE = {
   en: (place, pollutant, level) => `${pollutant} in ${place}: index ${level}.`,
   fr: (place, pollutant, level) => `${pollutant} à ${place} : indice ${level}.`,
+  de: (place, pollutant, level) => `${pollutant} in ${place}: Index ${level}.`,
+  es: (place, pollutant, level) => `${pollutant} en ${place}: índice ${level}.`,
 };
 
 const NO_DATA_SENTENCE = {
   en: (place) => `Air quality in ${place}: no data available.`,
   fr: (place) => `Qualité de l'air à ${place} : données indisponibles.`,
+  de: (place) => `Luftqualität in ${place}: keine Daten verfügbar.`,
+  es: (place) => `Calidad del aire en ${place}: no hay datos disponibles.`,
 };
 
 /**

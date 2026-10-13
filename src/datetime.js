@@ -25,6 +25,8 @@ const LOCAL_ISO = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/;
 const FORMATS = {
   fr: ({ year, month, day, hour, minute }) => `${day}/${month}/${year} à ${hour}:${minute}`,
   en: ({ year, month, day, hour, minute }) => `${year}-${month}-${day} ${hour}:${minute}`,
+  de: ({ year, month, day, hour, minute }) => `${day}.${month}.${year} um ${hour}:${minute}`,
+  es: ({ year, month, day, hour, minute }) => `${day}/${month}/${year} a las ${hour}:${minute}`,
 };
 
 /**
@@ -45,7 +47,7 @@ export function formatMeasuredAt(measuredAt, language, timeZone) {
   }
 
   const [, year, month, day, hour, minute] = match;
-  const format = FORMATS[language] ?? FORMATS.fr;
+  const format = FORMATS[language] ?? FORMATS.en;
   const stamp = format({ year, month, day, hour, minute });
 
   const zone = String(timeZone ?? '').trim();

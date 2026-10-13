@@ -2,7 +2,7 @@
 // The language the DEVICES speak.
 //
 // Everything this integration says under a button — an action result, a
-// connection status — travels as an `{ en, fr }` object and is rendered by
+// connection status — travels as an `{ en, fr, de, es }` object and is rendered by
 // Gladys in the language of the user reading it: the core picks the key, we
 // never choose. Device and feature NAMES are the exception. They are plain
 // strings, copied into `t_device_feature.name` the day the user creates the
@@ -24,8 +24,11 @@
 // Discovery tab is what renames it.
 // -----------------------------------------------------------------------------
 
-/** The languages the device names are written in, in manifest order. */
-export const LANGUAGES = ['fr', 'en'];
+/**
+ * The languages this integration writes in, in manifest order: the options of
+ * the device-name select, and the keys of every message it hands to Gladys.
+ */
+export const LANGUAGES = ['fr', 'en', 'de', 'es'];
 
 /** The one used when the configuration says nothing, or says nonsense. */
 export const DEFAULT_LANGUAGE = 'fr';
@@ -45,13 +48,26 @@ export function normalizeLanguage(value) {
 }
 
 /**
- * The entry of a multi-language object for a language, falling back to the
- * default one and then to English — the key the SDK guarantees.
+ * The entry of a multi-language object for a language, falling back to
+ * English — the key the SDK guarantees, and the one Gladys itself falls back to.
  * @param {Record<string, unknown>} entries e.g. `{ en: 'Good', fr: 'Bon' }`
  * @param {string} language
  */
 export function inLanguage(entries, language) {
-  return entries[language] ?? entries[DEFAULT_LANGUAGE] ?? entries.en;
+  return entries[language] ?? entries.en;
+}
+
+/**
+ * Build a multi-language message, one entry per language of LANGUAGES.
+ *
+ * For the messages ASSEMBLED from parts — a header and its lines, a clause and
+ * its notes — so a new language is one more entry in each table the builder
+ * reads, never one more line at every call site.
+ * @param {(language: string) => string} build the text in one language
+ * @returns {Record<string, string>} e.g. `{ fr: '…', en: '…', de: '…', es: '…' }`
+ */
+export function byLanguage(build) {
+  return Object.fromEntries(LANGUAGES.map((language) => [language, build(language)]));
 }
 
 /**

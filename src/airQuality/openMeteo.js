@@ -262,7 +262,7 @@ function parseCurrent(body) {
  * cache, is the same code.
  * @param {object} spec
  * @param {string} spec.key identifier reported by the test action and the logs
- * @param {{ en: string, fr: string }} spec.name
+ * @param {{ en: string, fr: string, de: string, es: string }} spec.name
  * @param {string} spec.domain the Open-Meteo `domains` value
  * @param {(point: object) => boolean} spec.supports
  */
@@ -431,6 +431,8 @@ export const openMeteoEuropeProvider = createOpenMeteoProvider({
   name: {
     en: 'Open-Meteo (CAMS Europe, Copernicus)',
     fr: 'Open-Meteo (CAMS Europe, Copernicus)',
+    de: 'Open-Meteo (CAMS Europa, Copernicus)',
+    es: 'Open-Meteo (CAMS Europa, Copernicus)',
   },
   domain: 'cams_europe',
   supports: (point) => isPoint(point) && insideCamsEurope(point),
@@ -442,6 +444,8 @@ export const openMeteoGlobalProvider = createOpenMeteoProvider({
   name: {
     en: 'Open-Meteo (CAMS global, Copernicus)',
     fr: 'Open-Meteo (CAMS global, Copernicus)',
+    de: 'Open-Meteo (CAMS global, Copernicus)',
+    es: 'Open-Meteo (CAMS global, Copernicus)',
   },
   domain: 'cams_global',
   // No bounding box: the global model covers the planet, so the only thing left

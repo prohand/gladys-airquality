@@ -9,6 +9,8 @@ import { formatMeasuredAt } from '../src/datetime.js';
 test('a reading time is written in the configured language', () => {
   assert.equal(formatMeasuredAt('2026-08-06T12:00', 'fr'), '06/08/2026 à 12:00');
   assert.equal(formatMeasuredAt('2026-08-06T12:00', 'en'), '2026-08-06 12:00');
+  assert.equal(formatMeasuredAt('2026-08-06T12:00', 'de'), '06.08.2026 um 12:00');
+  assert.equal(formatMeasuredAt('2026-08-06T12:00', 'es'), '06/08/2026 a las 12:00');
 });
 
 test('the zone abbreviation is appended when the source names one', () => {
@@ -42,6 +44,6 @@ test('no timestamp at all is null, not a made-up date', () => {
   }
 });
 
-test('an unknown language falls back rather than losing the date', () => {
-  assert.equal(formatMeasuredAt('2026-08-06T12:00', 'de'), '06/08/2026 à 12:00');
+test('an unknown language falls back to English rather than losing the date', () => {
+  assert.equal(formatMeasuredAt('2026-08-06T12:00', 'it'), '2026-08-06 12:00');
 });

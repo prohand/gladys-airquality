@@ -198,7 +198,7 @@ the geocoder does not know can still be added by its latitude and longitude.
 │     ├─ content.js                  #   shared vocabulary: colours, language, clip
 │     ├─ stationWidget.js            #   one location, with the 48 h curve
 │     └─ locationsWidget.js          #   every location, one row each
-├─ docs/{en,fr}.md                   # user documentation, linked from Gladys
+├─ docs/{en,fr,de,es}.md             # user documentation, linked from Gladys
 ├─ gladys-assistant-integration.json # manifest (name, config schema, actions…)
 ├─ Dockerfile                        # Node 24 Alpine, read-only rootfs ready
 └─ .github/workflows/                # CI + UI-driven release

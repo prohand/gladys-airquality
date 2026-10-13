@@ -278,6 +278,24 @@ test('the feature names follow the configured language', () => {
   assert.ok(en.features.some((f) => f.name.endsWith('sub-index')));
 });
 
+test('the device and feature names can be German or Spanish', () => {
+  const gladys = createFakeGladys();
+  const de = buildDevice(gladys, NANTES, 'de');
+  const es = buildDevice(gladys, NANTES, 'es');
+
+  assert.match(de.name, /^Luftqualität —/);
+  assert.match(es.name, /^Calidad del aire —/);
+  assert.ok(de.features.some((f) => f.name === 'Dominierender Schadstoff'));
+  assert.ok(es.features.some((f) => f.name === 'Contaminante dominante'));
+  assert.ok(de.features.some((f) => f.name === 'Teilindex Ozon (O₃)'));
+  assert.ok(es.features.some((f) => f.name === 'Subíndice Ozono (O₃)'));
+  // Same features, same external ids: only the names follow the language.
+  assert.deepEqual(
+    de.features.map((f) => f.external_id),
+    buildDevice(gladys, NANTES, 'fr').features.map((f) => f.external_id),
+  );
+});
+
 test('a reading becomes one state per feature that has a value', () => {
   const gladys = createFakeGladys();
   const ids = gladys.externalIds(DEVICE_TYPE, NANTES.id);

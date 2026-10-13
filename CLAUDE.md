@@ -97,7 +97,7 @@ names the device it leaves behind.
 The SDK acks a thrown handler error as a plain `error: e.message` string, which
 loses the multi-language message. Every expected, user-facing outcome — a town
 nobody knows, an ambiguous name, half a coordinate pair — is
-**returned** as an `{ en, fr }` object; only unexpected failures throw. That
+**returned** as an `{ en, fr, de, es }` object; only unexpected failures throw. That
 includes a list SAVED whose devices could not be published: `commit()` returns
 the reason instead of rethrowing it, and the action answers "saved, but the
 publication failed: <reason>" (`savedButNotPublished`) — a bare error would make
@@ -109,15 +109,18 @@ integration has to say, hence the listing being an action too.
 ### Names are the only text this integration has to translate itself
 
 Everything displayed — action results, connection status — is returned as
-`{ en, fr }` and rendered by the core in the reader's language. Device and
+`{ en, fr, de, es }` and rendered by the core in the reader's language: every
+user-facing text is `{ en, fr, de, es }` (a message assembled from parts goes
+through `byLanguage()`), and `docs/en.md`, `docs/fr.md`, `docs/de.md`,
+`docs/es.md` stay in sync. Device and
 feature **names** cannot work that way: they are plain strings stored in
 `t_device_feature.name` when the user creates the device, and the host API
 exposes no user language at all.
 
-Hence `src/language.js`: `config.language`, a manifest `select`, **`fr` by
-default**. It is threaded through `buildDevice`/`buildStates`/`poll` as an
+Hence `src/language.js`: `config.language`, a manifest `select` (`fr`, `en`,
+`de`, `es`), **`fr` by default**. It is threaded through `buildDevice`/`buildStates`/`poll` as an
 argument rather than read from a module-level variable, so the mapping stays
-testable in both languages. The TEXT states follow it too — a stored state is a
+testable in every language. The TEXT states follow it too — a stored state is a
 string like a name, translated by nobody downstream. That includes the reading
 time (`src/datetime.js`): its local ISO stamp is formatted by hand, never
 through `new Date()`, which would read AND re-render it in the container's
@@ -271,7 +274,7 @@ every action has a handler _and_ every handler has a button, `DEFAULT_CONFIG`
 matches the manifest defaults, the delete dropdown offers exactly
 `MAX_LOCATIONS` positions, `add_location` carries no country and no postal code
 field, its coordinates are `string` fields, `section` fields stay valueless,
-every label is bilingual. When you change one side, the test tells you about the
+every text carries `en`, `fr`, `de` and `es`. When you change one side, the test tells you about the
 other.
 
 Config/action field types: `string` (not `text`), `number`, `boolean`, `select`,

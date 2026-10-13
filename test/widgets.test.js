@@ -253,7 +253,12 @@ test('the refresh pill of a station republishes that location only', async () =>
       settings: { location: NANTES_DEVICE },
     },
   );
-  assert.deepEqual(toast, { en: 'Maison refreshed.', fr: 'Maison rafraîchi.' });
+  assert.deepEqual(toast, {
+    en: 'Maison refreshed.',
+    fr: 'Maison rafraîchi.',
+    de: 'Maison aktualisiert.',
+    es: 'Maison actualizado.',
+  });
   assert.equal(calls.length, 1);
   assert.ok(gladys.published.length > 0);
 });
@@ -333,7 +338,12 @@ test('the list card with no location says where to add one', async () => {
 test('the refresh pill of the list refreshes everything and counts', async () => {
   stubFetch();
   const toast = await locations.onAction(createFakeGladys(), config);
-  assert.deepEqual(toast, { en: '2 location(s) refreshed.', fr: '2 lieu(x) rafraîchi(s).' });
+  assert.deepEqual(toast, {
+    en: '2 location(s) refreshed.',
+    fr: '2 lieu(x) rafraîchi(s).',
+    de: '2 Ort(e) aktualisiert.',
+    es: '2 lugar(es) actualizado(s).',
+  });
 });
 
 // --- Shared rules ---------------------------------------------------------------
@@ -351,8 +361,13 @@ test('the bad classes are painted as bad, and no value is neutral', () => {
 });
 
 test('a reader language this integration does not speak falls back to the configured one', () => {
-  assert.equal(widgetLanguage('de', { language: 'en' }), 'en');
+  assert.equal(widgetLanguage('it', { language: 'en' }), 'en');
   assert.equal(widgetLanguage('fr-FR', { language: 'en' }), 'fr');
+});
+
+test('a German or Spanish reader gets the card in their language', () => {
+  assert.equal(widgetLanguage('de', { language: 'fr' }), 'de');
+  assert.equal(widgetLanguage('es-ES', { language: 'en' }), 'es');
 });
 
 test('the refresh cycle nudges each widget once, whatever the number of locations', async () => {

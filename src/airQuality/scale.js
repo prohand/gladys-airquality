@@ -50,25 +50,42 @@ export const INDEX_LEVELS = {
 };
 
 /**
- * Official wording of each class: the EEA one in English, the ATMO one in
- * French. Used by the TEXT feature, the action messages and the logs.
+ * Official wording of each class: the EEA one in English and German, the ATMO
+ * one in French, the one of the Spanish ICA (índice de calidad del aire, the
+ * same six EEA bands) in Spanish. Used by the TEXT feature, the action messages
+ * and the logs.
  */
 export const INDEX_LABELS = {
-  1: { en: 'Good', fr: 'Bon' },
-  2: { en: 'Fair', fr: 'Moyen' },
-  3: { en: 'Moderate', fr: 'Dégradé' },
-  4: { en: 'Poor', fr: 'Mauvais' },
-  5: { en: 'Very poor', fr: 'Très mauvais' },
-  6: { en: 'Extremely poor', fr: 'Extrêmement mauvais' },
+  1: { en: 'Good', fr: 'Bon', de: 'Gut', es: 'Buena' },
+  2: { en: 'Fair', fr: 'Moyen', de: 'Ausreichend', es: 'Razonablemente buena' },
+  3: { en: 'Moderate', fr: 'Dégradé', de: 'Mäßig', es: 'Regular' },
+  4: { en: 'Poor', fr: 'Mauvais', de: 'Schlecht', es: 'Desfavorable' },
+  5: { en: 'Very poor', fr: 'Très mauvais', de: 'Sehr schlecht', es: 'Muy desfavorable' },
+  6: {
+    en: 'Extremely poor',
+    fr: 'Extrêmement mauvais',
+    de: 'Extrem schlecht',
+    es: 'Extremadamente desfavorable',
+  },
 };
 
 /** Display names of the pollutants, for the feature names and the messages. */
 export const POLLUTANT_NAMES = {
-  pm2_5: { en: 'PM2.5', fr: 'PM2,5' },
-  pm10: { en: 'PM10', fr: 'PM10' },
-  nitrogen_dioxide: { en: 'Nitrogen dioxide (NO₂)', fr: "Dioxyde d'azote (NO₂)" },
-  ozone: { en: 'Ozone (O₃)', fr: 'Ozone (O₃)' },
-  sulphur_dioxide: { en: 'Sulphur dioxide (SO₂)', fr: 'Dioxyde de soufre (SO₂)' },
+  pm2_5: { en: 'PM2.5', fr: 'PM2,5', de: 'PM2,5', es: 'PM2,5' },
+  pm10: { en: 'PM10', fr: 'PM10', de: 'PM10', es: 'PM10' },
+  nitrogen_dioxide: {
+    en: 'Nitrogen dioxide (NO₂)',
+    fr: "Dioxyde d'azote (NO₂)",
+    de: 'Stickstoffdioxid (NO₂)',
+    es: 'Dióxido de nitrógeno (NO₂)',
+  },
+  ozone: { en: 'Ozone (O₃)', fr: 'Ozone (O₃)', de: 'Ozon (O₃)', es: 'Ozono (O₃)' },
+  sulphur_dioxide: {
+    en: 'Sulphur dioxide (SO₂)',
+    fr: 'Dioxyde de soufre (SO₂)',
+    de: 'Schwefeldioxid (SO₂)',
+    es: 'Dióxido de azufre (SO₂)',
+  },
 };
 
 // Upper bounds (µg/m³, EXCLUSIVE) of classes 1 to 5; anything at or above the
@@ -105,7 +122,7 @@ export const CONCENTRATION_MAX = {
  */
 export function pollutantName(pollutant, language = 'fr') {
   const names = POLLUTANT_NAMES[pollutant];
-  return names ? (names[language] ?? names.fr ?? names.en) : pollutant;
+  return names ? (names[language] ?? names.en) : pollutant;
 }
 
 /**

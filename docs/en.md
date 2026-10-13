@@ -35,15 +35,15 @@ a point sits in.
 
 ## Adding a location
 
-1. Open the integration's **Configuration** screen.
+1. Open the integration's **Configuration** tab.
 2. In the "Your locations" section, click **Add a location**.
 3. Type the **town** — "Nantes", "Montreal", "Kyoto" — and optionally a **name**
    for this location ("Home", "Office"…). Without a name, the location takes the
    name of the place found.
 4. The answer appears under the button. On success it confirms the addition and
    gives you the location's number.
-5. Go to the **Discovery** tab: the device "Qualité de l'air — _your location_"
-   is waiting there to be added. Click it to create it in Gladys.
+5. Go to the **Discover** tab: the device "Qualité de l'air — _your location_"
+   is waiting there. Click **Add to Gladys** to create it.
 
 ### One name, several places
 
@@ -86,7 +86,7 @@ deleting a location to be sure of the number.
    location would be removed. Check it is the right one.
 4. Tick **I confirm the deletion** and run it again.
 
-The location leaves the Discovery tab immediately.
+The location leaves the Discover tab immediately.
 
 > **The Gladys device itself is not deleted.** An integration is not allowed to
 > delete a device you created — it can only stop offering it. If you had added
@@ -183,14 +183,15 @@ either.
 
 ## On your dashboard
 
-Two widgets are offered in the dashboard editor, among the integration widgets.
+Two widgets are offered in **Dashboard → Edit → New widget**, under
+**Integration widgets**.
 They follow the language of whoever is looking, and their colours follow the
 Gladys theme (light or dark).
 
 ### Air quality — one place
 
 The card of one location, picked among the devices already added from the
-Discovery tab:
+Discover tab:
 
 - a **gauge** from 1 to 6 with the current index;
 - the **dominant pollutant**, the one that sets the index (nothing when the air
@@ -212,7 +213,7 @@ Two settings per card:
 
 One row per configured location, with its index and its dominant pollutant, and
 a **Refresh** button that re-reads every location. No setting: the card shows
-the list managed in the configuration screen. Beyond ten locations, the caption
+the list managed in the **Configuration** tab. Beyond ten locations, the caption
 says how many are left out.
 
 The colours: green for "Good" and "Fair", yellow for "Moderate", red from "Poor"
@@ -224,12 +225,13 @@ a red beats painting a "Poor" in yellow.
 ### 1. The measures, like any sensor
 
 The index, the sub-indexes and the concentrations are features of the device:
-the Gladys "Device value" trigger watches them like any sensor ("when the index
+the Gladys "Device state change" trigger watches them like any sensor ("when the index
 goes above 3").
 
 ### 2. The triggers
 
-In the scene editor, under **Air quality**:
+In the scene editor, in the **Integrations** category of the trigger picker
+(each entry shows "Air quality" under its name):
 
 - **Air quality index changed** — once, when the overall index of a location
   **moves** from one class to another. Never on every refresh.
@@ -269,11 +271,11 @@ Example: "every day at 7 am → Read the air quality (Home) → send me `{{summa
 
 ## Settings
 
-- **Language of the device names** — French by default. Everything the
+- **Language of the device names** — French by default (English, German and Spanish too). Everything the
   integration displays already follows your Gladys account language, but the
   name of a device and of its features is stored as it is published, so it has
   to be chosen here. A device already added keeps the names it was created with;
-  delete it and add it again from the Discovery tab to rename it. This setting
+  delete it and add it again from the Discover tab to rename it. This setting
   is also the language the geocoder answers in: "Munich" or "München" for the
   same city.
 - **Refresh interval** — 1 hour by default (between 15 minutes and 24 hours).
@@ -285,7 +287,7 @@ The **Test the air quality source** button queries the source live for **every**
 location and shows each one's index, in the same format as the listing. It is
 the fastest way to see whether a location has a problem, and why.
 
-The **Supervision** screen shows the integration's application-level status: it
+The **Supervision** tab shows the integration's application-level status: it
 turns red, with the reason, when a location can no longer be read.
 
 A location the source fails to answer for is **tried again on its own**, 30
