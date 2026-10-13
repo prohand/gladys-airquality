@@ -46,8 +46,7 @@ geocodificador no puede nombrar la ciudad en la que se encuentra un punto.
    añadido y le da el número del lugar.
 5. Vaya a la pestaña **Descubrir**: el dispositivo «Qualité de l'air — _su
    lugar_» («Calidad del aire — _su lugar_» si el idioma de los nombres de
-   dispositivo es el español) le espera allí para añadirlo. Púlselo para crearlo
-   en Gladys.
+   dispositivo es el español) le espera allí. Pulse **Añadir a Gladys** para crearlo.
 
 ### Un nombre, varios lugares
 
@@ -190,8 +189,8 @@ cuenta y sin clave de API.
 
 ## En su panel
 
-Se ofrecen dos widgets en «Editar panel», entre los widgets de las
-integraciones. Siguen el idioma de quien los mira, y sus colores siguen el tema
+Se ofrecen dos widgets en **Panel → Editar → Nuevo widget**, en
+**Widgets de integraciones**. Siguen el idioma de quien los mira, y sus colores siguen el tema
 de Gladys (claro u oscuro).
 
 ### Calidad del aire — un lugar
@@ -237,7 +236,8 @@ cualquier sensor («cuando el índice supere 3»).
 
 ### 2. Los activadores
 
-En el editor de escenas, bajo **Calidad del aire**:
+En el editor de escenas, en la categoría **Integraciones** del selector de
+activadores (cada entrada muestra «Calidad del aire» bajo su nombre):
 
 - **El índice de calidad del aire ha cambiado**: una vez, cuando el índice
   global de un lugar **pasa** de una clase a otra. Nunca en cada actualización.

@@ -1,36 +1,36 @@
 # Luftqualität
 
-Verfolgen Sie den Luftqualitätsindex der Orte Ihrer Wahl in Gladys, mit einem
-Gerät pro Ort. Sie fügen Ihre **Gladys-Häuser mit einem Klick** hinzu oder einen
-Ort, indem Sie den Namen seiner **Stadt** eingeben, **überall auf der Welt**.
+Verfolge den Luftqualitätsindex der Orte deiner Wahl in Gladys, mit einem
+Gerät pro Ort. Du fügst deine **Gladys-Häuser mit einem Klick** hinzu oder einen
+Ort, indem du den Namen seiner **Stadt** eingibst, **überall auf der Welt**.
 
 Kein Konto anzulegen, kein API-Schlüssel einzufügen: Beide Quellen, die diese
 Integration nutzt, sind offen und öffentlich.
 
-## Ihre Gladys-Häuser mit einem Klick hinzufügen
+## Deine Gladys-Häuser mit einem Klick hinzufügen
 
-Sie haben Gladys bereits gesagt, wo Sie wohnen: Das ist die Karte unter
+Du hast Gladys bereits gesagt, wo du wohnst: Das ist die Karte unter
 **Einstellungen > Zuhause**. Die Schaltfläche **„Meine Gladys-Häuser
 hinzufügen“** liest diese Häuser und legt für jedes noch nicht überwachte einen
 Ort an — ohne eine Stadt einzugeben.
 
-Drei Dinge, die Sie wissen sollten:
+Drei Dinge, die du wissen solltest:
 
-- **Der Zugriff ist eine Berechtigung.** Wo Sie wohnen, sind personenbezogene
-  Daten: Gladys teilt sie nur, wenn Sie die Anfrage auf dem Installationsbildschirm
+- **Der Zugriff ist eine Berechtigung.** Wo du wohnst, sind personenbezogene
+  Daten: Gladys teilt sie nur, wenn du die Anfrage auf dem Installationsbildschirm
   der Integration angenommen haben. Antwortet die Schaltfläche, dass der Zugriff
-  verweigert wird, entfernen Sie die Integration und installieren Sie sie neu,
-  wobei Sie die angezeigte Anfrage annehmen.
-- **Ein Haus, das Sie nie auf der Karte platziert haben, hat keine
-  Koordinaten.** Es wird in der Antwort genannt; verorten Sie es unter
-  Einstellungen > Zuhause und führen Sie die Aktion erneut aus.
+  verweigert wird, entferne die Integration und installiere sie neu,
+  wobei du die angezeigte Anfrage annimmst.
+- **Ein Haus, das du nie auf der Karte platziert hast, hat keine
+  Koordinaten.** Es wird in der Antwort genannt; verorte es unter
+  Einstellungen > Zuhause und führe die Aktion erneut aus.
 - **Das ist keine Synchronisierung.** Die Häuser werden in dem Moment gelesen, in
-  dem Sie klicken. Heraus kommt ein gewöhnlicher Ort, der wie die anderen
+  dem du klickst. Heraus kommt ein gewöhnlicher Ort, der wie die anderen
   umbenannt und entfernt wird, und ein später in Gladys verschobenes Haus
   verschiebt seinen Ort nicht.
 
-Um nur eines Ihrer Häuser hinzuzufügen — ein Ferienhaus, das nicht überwacht
-werden soll, bleibt außen vor —, wählen Sie es im Feld **Haus** der
+Um nur eines deiner Häuser hinzuzufügen — ein Ferienhaus, das nicht überwacht
+werden soll, bleibt außen vor —, wähle es im Feld **Haus** der
 Schaltfläche; bleibt es leer, werden alle Häuser hinzugefügt.
 
 Erneutes Klicken ist unbedenklich: Ein bereits überwachtes Haus wird gemeldet,
@@ -40,26 +40,25 @@ Geocoder die Stadt, in der ein Punkt liegt, nicht benennen kann.
 
 ## Einen Ort hinzufügen
 
-1. Öffnen Sie den Tab **Konfiguration** der Integration.
-2. Klicken Sie im Abschnitt „Ihre Orte“ auf **Ort hinzufügen**.
-3. Geben Sie die **Stadt** ein — „Nantes“, „Montreal“, „Kyoto“ — und optional
+1. Öffne den Tab **Konfiguration** der Integration.
+2. Klicke im Abschnitt „Deine Orte“ auf **Ort hinzufügen**.
+3. Gib die **Stadt** ein — „Nantes“, „Montreal“, „Kyoto“ — und optional
    einen **Namen** für diesen Ort („Zuhause“, „Büro“…). Ohne Namen übernimmt der
    Ort den Namen des gefundenen Orts.
 4. Die Antwort erscheint unter der Schaltfläche. Bei Erfolg bestätigt sie das
-   Hinzufügen und nennt Ihnen die Nummer des Orts.
-5. Gehen Sie zum Tab **Entdecken**: Das Gerät „Qualité de l'air — _Ihr Ort_“
-   („Luftqualität — _Ihr Ort_“, wenn die Sprache der Gerätenamen Deutsch ist)
-   wartet dort darauf, hinzugefügt zu werden. Klicken Sie darauf, um es in
-   Gladys anzulegen.
+   Hinzufügen und nennt dir die Nummer des Orts.
+5. Geh zum Tab **Entdecken**: Das Gerät „Qualité de l'air — _dein Ort_“
+   („Luftqualität — _dein Ort_“, wenn die Sprache der Gerätenamen Deutsch ist)
+   wartet dort. Klicke auf **Zu Gladys hinzufügen**, um es anzulegen.
 
 ### Ein Name, mehrere Orte
 
 Die meisten Städtenamen sind mehrfach vergeben: Allein in Frankreich gibt es
 mehrere Montauban, ein Paris in Texas und ein Springfield pro US-Bundesstaat. In
-diesem Fall entscheidet die Integration nicht für Sie — sie antwortet mit der
-Liste der gefundenen Orte und bittet Sie, genauer zu werden.
+diesem Fall entscheidet die Integration nicht für dich — sie antwortet mit der
+Liste der gefundenen Orte und bittet dich, genauer zu werden.
 
-Grenzen Sie **nach einem Komma** ein: die Region, das Departement, den
+Grenze **nach einem Komma** ein: die Region, das Departement, den
 Bundesstaat, das Land oder die Postleitzahl, in beliebiger Reihenfolge.
 
 - „Montauban, Tarn-et-Garonne“
@@ -72,41 +71,41 @@ Akzente und Groß-/Kleinschreibung spielen keine Rolle: „saint-etienne“ find
 
 ### Oder direkt ein Punkt
 
-Kennt der Geocoder Ihren Weiler nicht oder möchten Sie einen genauen Punkt von
-einer Karte übernehmen, geben Sie stattdessen **Breitengrad** und **Längengrad**
+Kennt der Geocoder deinen Weiler nicht oder möchtest du einen genauen Punkt von
+einer Karte übernehmen, gib stattdessen **Breitengrad** und **Längengrad**
 ein (WGS-84-Dezimalgrad). Beide gehören zusammen: Einer allein ist kein Punkt.
 Sie haben dann Vorrang vor der eingegebenen Stadt, die nur als Bezeichnung
 erhalten bleibt.
 
-## Ihre Orte auflisten
+## Deine Orte auflisten
 
 Die Schaltfläche **Meine Orte anzeigen** listet alles auf, was die Integration
 überwacht: Nummer, Name, Ort (Stadt, Region, Land) und Koordinaten. Ein Eintrag
 pro Zeile, jeder beginnt mit „•“.
 
-Diese **Nummern sind die, die beim Entfernen verwendet werden**: Führen Sie diese
-Aktion aus, bevor Sie einen Ort entfernen, um der Nummer sicher zu sein.
+Diese **Nummern sind die, die beim Entfernen verwendet werden**: Führe diese
+Aktion aus, bevor du einen Ort entfernst, um der Nummer sicher zu sein.
 
 ## Einen Ort entfernen
 
-1. Klicken Sie auf **Ort entfernen**.
-2. Wählen Sie die **Nummer** des Orts in der Auswahlliste.
-3. Führen Sie die Aktion einmal **ohne Häkchen** aus: Die Antwort sagt Ihnen,
-   welcher Ort entfernt würde. Prüfen Sie, ob es der richtige ist.
-4. Setzen Sie das Häkchen bei **Ich bestätige das Entfernen** und führen Sie sie
+1. Klicke auf **Ort entfernen**.
+2. Wähle die **Nummer** des Orts in der Auswahlliste.
+3. Führe die Aktion einmal **ohne Häkchen** aus: Die Antwort sagt dir,
+   welcher Ort entfernt würde. Prüfe, ob es der richtige ist.
+4. Setze das Häkchen bei **Ich bestätige das Entfernen** und führe sie
    erneut aus.
 
 Der Ort verschwindet sofort aus dem Tab „Entdecken“.
 
 > **Das Gladys-Gerät selbst wird nicht gelöscht.** Eine Integration darf ein von
-> Ihnen angelegtes Gerät nicht löschen — sie kann nur aufhören, es anzubieten.
-> Hatten Sie das Gerät dieses Orts hinzugefügt, nennt die Antwort es: Löschen
-> Sie es selbst im Tab **Geräte** der Integration, sonst bleibt es dort und wird
+> dir angelegtes Gerät nicht löschen — sie kann nur aufhören, es anzubieten.
+> Hattest du das Gerät dieses Orts hinzugefügt, nennt die Antwort es: Lösche
+> es selbst im Tab **Geräte** der Integration, sonst bleibt es dort und wird
 > nie wieder aktualisiert.
 
-Achten Sie auch auf die Neunummerierung: Wird Ort 2 von vieren entfernt, werden
-die Orte 3 und 4 zu den Orten 2 und 3. Führen Sie „Meine Orte anzeigen“ erneut
-aus, bevor Sie einen weiteren entfernen.
+Achte auch auf die Neunummerierung: Wird Ort 2 von vieren entfernt, werden
+die Orte 3 und 4 zu den Orten 2 und 3. Führe „Meine Orte anzeigen“ erneut
+aus, bevor du einen weiteren entfernst.
 
 ## Was das Gerät misst
 
@@ -196,10 +195,10 @@ Hausautomations-Szene braucht —, statt das ATMO-Tagesbulletin wiederzugeben.
 Koordinaten aufgelöst, gestützt auf die weltweite **GeoNames**-Datenbank. Ebenfalls
 offen, ebenfalls ohne Konto und ohne API-Schlüssel.
 
-## Auf Ihrem Dashboard
+## Auf deinem Dashboard
 
-Zwei Widgets werden unter „Dashboard bearbeiten“ angeboten, bei den Widgets der
-Integrationen. Sie folgen der Sprache der Person, die sie ansieht, und ihre
+Zwei Widgets werden unter **Dashboard → Bearbeiten → Neues Widget** angeboten,
+bei den **Integrations-Widgets**. Sie folgen der Sprache der Person, die sie ansieht, und ihre
 Farben folgen dem Gladys-Design (hell oder dunkel).
 
 ### Luftqualität — ein Ort
@@ -218,11 +217,11 @@ hinzugefügten Geräten:
 
 Zwei Einstellungen pro Karte:
 
-- **Verfolgte Schadstoffe** — wählen Sie die aus, die Sie interessieren (Ozon im
+- **Verfolgte Schadstoffe** — wähle die aus, die dich interessieren (Ozon im
   Sommer, Feinstaub im Winter): Die Anzeige, die Zeilen und die Kurve
   berücksichtigen dann nur diese. Nichts ausgewählt = alle, also der Index, den
   Gladys veröffentlicht.
-- **Kommende Stunden anzeigen** — deaktivieren Sie es für eine kompakte Karte.
+- **Kommende Stunden anzeigen** — deaktiviere es für eine kompakte Karte.
 
 ### Luftqualität — alle Orte
 
@@ -245,7 +244,8 @@ Der Gladys-Auslöser „Änderung von Gerätestatus“ überwacht sie wie jeden 
 
 ### 2. Die Auslöser
 
-Im Szenen-Editor, unter **Luftqualität**:
+Im Szenen-Editor, in der Kategorie **Integrationen** der Auslöser-Auswahl
+(jeder Eintrag zeigt „Luftqualität“ unter seinem Namen):
 
 - **Luftqualitätsindex hat sich geändert** — einmal, wenn der Gesamtindex eines
   Orts von einer Klasse in eine andere **wechselt**. Nie bei jeder
@@ -275,9 +275,9 @@ Zwei Dinge, die man wissen sollte:
 
 - **Luftqualität lesen** — liest einen Ort sofort und übergibt den nächsten
   Aktionen die Klasse, ihre Bezeichnung, den Schadstoff, seine Konzentration,
-  die Uhrzeit der Analyse und denselben fertigen Satz. Wählen Sie „Gesamtindex“
+  die Uhrzeit der Analyse und denselben fertigen Satz. Wähle „Gesamtindex“
   (der derzeit schlechteste Schadstoff) oder einen Schadstoff. Keine Daten? Die
-  Klasse ist leer und der Satz sagt es: Prüfen Sie das in einer Bedingung,
+  Klasse ist leer und der Satz sagt es: Prüfe das in einer Bedingung,
   statt auf einen Fehler zu warten.
 - **Luftqualitätsdaten aktualisieren** — liest einen Ort neu und veröffentlicht
   ihn neu, oder alle, wenn der Ort leer bleibt, ohne auf die nächste
@@ -291,10 +291,10 @@ schicken“.
 
 - **Sprache der Gerätenamen** — standardmäßig Französisch (auch Englisch,
   Deutsch und Spanisch). Alles, was die Integration anzeigt, folgt bereits der
-  Sprache Ihres Gladys-Kontos, aber der Name eines Geräts und seiner Funktionen
+  Sprache deines Gladys-Kontos, aber der Name eines Geräts und seiner Funktionen
   wird so gespeichert, wie er veröffentlicht wird, und muss daher hier gewählt
   werden. Ein bereits hinzugefügtes Gerät behält die Namen, mit denen es erstellt
-  wurde; löschen Sie es und fügen Sie es über den Tab „Entdecken“ erneut hinzu,
+  wurde; lösche es und füge es über den Tab „Entdecken“ erneut hinzu,
   um es umzubenennen. Diese Einstellung ist auch die Sprache, in der der
   Geocoder antwortet: „Munich“ oder „München“ für dieselbe Stadt.
 - **Aktualisierungsintervall** — standardmäßig 1 Stunde (zwischen 15 Minuten und
@@ -314,7 +314,7 @@ mit dem Grund, wenn ein Ort nicht mehr gelesen werden kann.
 Ein Ort, für den die Quelle nicht antwortet, wird **für sich allein erneut
 versucht**, 30 Sekunden und dann 2 Minuten später (länger, wenn die Quelle um
 eine Verlangsamung bittet), statt bis zur nächsten Aktualisierung leer zu
-bleiben. Alle Ihre Orte werden gemeinsam gelesen, mit einer Anfrage pro
+bleiben. Alle deine Orte werden gemeinsam gelesen, mit einer Anfrage pro
 CAMS-Modell.
 
 ## Grenzen
@@ -330,4 +330,4 @@ CAMS-Modell.
 - Gladys **5.2.0** oder neuer: 5.1.0 hat Widgets und Szenen für Integrationen
   geöffnet, 5.2.0 die Hausauswahl von „Meine Gladys-Häuser hinzufügen“.
 - Ein Ort kann nicht bearbeitet werden: Um eine andere Gemeinde zu überwachen,
-  entfernen Sie ihn und fügen Sie einen neuen hinzu.
+  entferne ihn und füge einen neuen hinzu.

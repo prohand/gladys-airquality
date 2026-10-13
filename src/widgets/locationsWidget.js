@@ -35,7 +35,7 @@ export const MAX_ROWS = 10;
 const NO_LOCATION = {
   en: 'No location configured yet: add one in the integration settings.',
   fr: "Aucun lieu configuré : ajoutez-en un dans les réglages de l'intégration.",
-  de: 'Noch kein Ort: Fügen Sie einen in der Konfiguration der Integration hinzu.',
+  de: 'Noch kein Ort: Füge einen in der Konfiguration der Integration hinzu.',
   es: 'Ningún lugar configurado: añada uno en la configuración de la integración.',
 };
 const UNREADABLE = {

@@ -520,7 +520,7 @@ const DOMINANT_WORD = { en: 'dominant', fr: 'dominant', de: 'dominierend', es: '
 const NO_LOCATION_MESSAGE = {
   en: 'No location with usable coordinates yet. Add one with "Add a location".',
   fr: 'Aucun lieu avec des coordonnées utilisables. Ajoutez-en un avec « Ajouter un lieu ».',
-  de: 'Noch kein Ort mit verwendbaren Koordinaten. Fügen Sie einen mit „Ort hinzufügen“ hinzu.',
+  de: 'Noch kein Ort mit verwendbaren Koordinaten. Füge einen mit „Ort hinzufügen“ hinzu.',
   es: 'Todavía no hay ningún lugar con coordenadas utilizables. Añada uno con «Añadir un lugar».',
 };
 

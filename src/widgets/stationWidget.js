@@ -46,7 +46,7 @@ const MAX_CHART_SERIES = 4;
 const NO_LOCATION = {
   en: 'Pick a location in the widget settings.',
   fr: 'Choisissez un lieu dans les réglages du widget.',
-  de: 'Wählen Sie in den Widget-Einstellungen einen Ort aus.',
+  de: 'Wähle in den Widget-Einstellungen einen Ort aus.',
   es: 'Elija un lugar en la configuración del widget.',
 };
 const NO_DATA = {
@@ -61,7 +61,7 @@ const OVERALL_LABEL = {
   de: 'Luftqualität',
   es: 'Calidad del aire',
 };
-const FILTERED_LABEL = { en: 'Your index', fr: 'Votre indice', de: 'Ihr Index', es: 'Su índice' };
+const FILTERED_LABEL = { en: 'Your index', fr: 'Votre indice', de: 'Dein Index', es: 'Su índice' };
 const DOMINANT_LABEL = { en: 'Dominant', fr: 'Dominant', de: 'Dominierend', es: 'Dominante' };
 const UNAVAILABLE = { en: 'no value', fr: 'pas de valeur', de: 'kein Wert', es: 'sin valor' };
 const CHART_TITLE = {

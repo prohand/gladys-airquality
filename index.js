@@ -56,7 +56,7 @@ let pollingCleanups = [];
 const NOT_CONFIGURED_MESSAGE = {
   en: 'Add a location to start following the air quality.',
   fr: "Ajoutez un lieu pour suivre la qualité de l'air.",
-  de: 'Fügen Sie einen Ort hinzu, um die Luftqualität zu verfolgen.',
+  de: 'Füge einen Ort hinzu, um die Luftqualität zu verfolgen.',
   es: 'Añada un lugar para empezar a seguir la calidad del aire.',
 };
 
