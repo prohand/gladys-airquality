@@ -65,6 +65,11 @@ const CATALOG_CATEGORIES = [
   'notifications',
   'assistants',
   'services',
+  // Opened by the store with Gladys 5.3.
+  'transport',
+  'vehicles',
+  'servers',
+  'leisure',
 ];
 
 /**
@@ -358,6 +363,47 @@ test('the catalog categories are one to three keys the store knows', () => {
   // Declaring the field at all is what needs 4.86.0 — the store validator
   // refuses the pair, and an older core refuses the unknown field.
   assert.ok(floorAtLeast(4, 86), `gladys_version ${manifest.gladys_version} is below 4.86.0`);
+});
+
+// -----------------------------------------------------------------------------
+// The catalog fields Gladys 5.3 opened: `keywords` (search-only terms) and
+// `countries` (where the integration is usable). Like `categories`, a bad shape
+// is refused by the store, and an older core refuses the unknown field — so the
+// floor and the fields move together.
+// -----------------------------------------------------------------------------
+
+test('the search keywords are one to ten distinct terms of 2-30 characters', () => {
+  assert.ok(Array.isArray(manifest.keywords), 'keywords must be an array');
+  assert.ok(
+    manifest.keywords.length >= 1 && manifest.keywords.length <= 10,
+    `keywords: ${manifest.keywords.length} terms, must be 1-10`,
+  );
+  const normalized = manifest.keywords.map((keyword) => keyword.trim().toLowerCase());
+  for (const keyword of normalized) {
+    assert.ok(
+      keyword.length >= 2 && keyword.length <= 30,
+      `keyword "${keyword}": ${keyword.length} characters, must be 2-30`,
+    );
+  }
+  // The store compares them trimmed and lowercased: "AQI" and "aqi" are one.
+  assert.equal(new Set(normalized).size, normalized.length, 'a keyword is declared twice');
+});
+
+test('the integration is worldwide: no countries restrict its catalog shelves', () => {
+  // The geocoder and the CAMS global model cover the planet. Declaring
+  // `countries` would hide the integration from the browse views of every
+  // instance located elsewhere.
+  assert.equal(manifest.countries, undefined);
+});
+
+test('the compatibility range covers the version that opened keywords, countries and music', () => {
+  // 5.3.0 is the first core that knows these fields: an older one rejects the
+  // WHOLE manifest over them, and the store refuses the pair.
+  for (const key of ['keywords', 'countries', 'music']) {
+    if (manifest[key] !== undefined) {
+      assert.ok(floorAtLeast(5, 3), `${key} requires gladys_version >= 5.3.0`);
+    }
+  }
 });
 
 test('the manifest declares the image and the version the release workflow rewrites', () => {

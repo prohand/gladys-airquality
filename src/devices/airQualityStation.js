@@ -90,22 +90,6 @@ const SUB_INDEX_SUFFIX = 'sub-index';
 const CONCENTRATION_SUFFIX = 'concentration';
 
 /**
- * The three gas categories the core gained WITH this feature, spelled out
- * because the SDK did not carry them when they were adopted (0.14.0 exports
- * them, and the `??` below picks the constant up).
- *
- * The literal IS the contract: `setDiscoveredDevices` validates `category`
- * against `DEVICE_FEATURE_CATEGORIES_LIST`, a flat list of these very strings,
- * so the SDK constant is a convenience and not the authority. The `??` picks
- * the constant up on its own the day the SDK ships it, and the manifest's
- * `gladys_version` is what keeps an older core — which would refuse the WHOLE
- * batch on an unknown category — from ever seeing them.
- */
-const NO2_SENSOR = DEVICE_FEATURE_CATEGORIES.NO2_SENSOR ?? 'no2-sensor';
-const O3_SENSOR = DEVICE_FEATURE_CATEGORIES.O3_SENSOR ?? 'o3-sensor';
-const SO2_SENSOR = DEVICE_FEATURE_CATEGORIES.SO2_SENSOR ?? 'so2-sensor';
-
-/**
  * Category of the concentration feature of each pollutant. Every one of the
  * five now has a dedicated one, so the concentrations get their icon, their
  * label, their colour bands and their place in the "climate" group of the
@@ -119,9 +103,9 @@ const SO2_SENSOR = DEVICE_FEATURE_CATEGORIES.SO2_SENSOR ?? 'so2-sensor';
 const CONCENTRATION_CATEGORIES = {
   pm2_5: DEVICE_FEATURE_CATEGORIES.PM25_SENSOR,
   pm10: DEVICE_FEATURE_CATEGORIES.PM10_SENSOR,
-  nitrogen_dioxide: NO2_SENSOR,
-  ozone: O3_SENSOR,
-  sulphur_dioxide: SO2_SENSOR,
+  nitrogen_dioxide: DEVICE_FEATURE_CATEGORIES.NO2_SENSOR,
+  ozone: DEVICE_FEATURE_CATEGORIES.O3_SENSOR,
+  sulphur_dioxide: DEVICE_FEATURE_CATEGORIES.SO2_SENSOR,
 };
 
 /** Names of the features that are not about one pollutant. */

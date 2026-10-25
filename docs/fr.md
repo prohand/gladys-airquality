@@ -315,8 +315,8 @@ ensemble, en une requête par modèle CAMS.
 - Hors d'Europe, le modèle est **quatre fois plus grossier** (~40 km contre
   ~11 km) : il décrit bien un fond régional, moins bien une rue.
 - Vingt lieux au maximum.
-- Gladys **5.2.0** minimum : la 5.1.0 a ouvert les widgets et les scènes aux
+- Gladys **5.3.0** minimum : la 5.1.0 a ouvert les widgets et les scènes aux
   intégrations, la 5.2.0 le choix de la maison dans « Ajouter mes maisons
-  Gladys ».
+  Gladys », la 5.3.0 les mots-clés de recherche du catalogue des intégrations.
 - Un lieu n'est pas modifiable : pour changer de commune, supprimez-le et
   ajoutez-en un autre.

@@ -20,12 +20,12 @@ Gladys (`GET /house`, opened by Gladys 4.85.0). That is a permission, not just a
 endpoint: the manifest declares `"location": true`, the install screen shows the
 request, and the core answers 403 to an integration that did not ask.
 
-`gladys_version` is `>=5.2.0`, the floor of the NEWEST thing the manifest uses:
+`gladys_version` is `>=5.3.0`, the floor of the NEWEST thing the manifest uses:
 4.85.0 for that endpoint, 4.86.0 for the `no2-sensor` / `o3-sensor` /
 `so2-sensor` categories and for the manifest `categories` field, 5.1.0 for
 the `widgets`, `scene_triggers` and `scene_actions` fields, and 5.2.0 for the
 optional `house` field of `import_houses` (a select with `source: "houses"`,
-which narrows the import to one house). None of these floors
+which narrows the import to one house), and 5.3.0 for the catalog `keywords`. None of these floors
 is cosmetic — an unknown feature category has the **whole** discovery batch
 refused, and an unknown manifest field has the whole integration refused.
 
@@ -48,9 +48,9 @@ Each device exposes:
 
 Every pollutant gets its raw concentration next to its sub-index: a sub-index is
 a band, and a band hides the trend inside it. `no2-sensor`, `o3-sensor` and
-`so2-sensor` are recent core categories — the integration spells the strings
-out, which is what the core validates against anyway (the SDK caught up and
-exports them since 0.12.0). `no2-matter-index-sensor` is NOT the category for NO₂:
+`so2-sensor` are recent core categories (4.86.0); the integration takes them
+from the SDK constants (`DEVICE_FEATURE_CATEGORIES.NO2_SENSOR`…), whose values
+are the very strings the core validates against. `no2-matter-index-sensor` is NOT the category for NO₂:
 despite its name it is an integer Matter index
 (unknown/low/medium/high/critical), not a concentration.
 

@@ -327,7 +327,8 @@ CAMS-Modell.
 - Außerhalb Europas ist das Modell **viermal gröber** (~40 km statt ~11 km): Es
   beschreibt eine regionale Hintergrundbelastung gut, eine Straße weniger.
 - Maximal zwanzig Orte.
-- Gladys **5.2.0** oder neuer: 5.1.0 hat Widgets und Szenen für Integrationen
-  geöffnet, 5.2.0 die Hausauswahl von „Meine Gladys-Häuser hinzufügen“.
+- Gladys **5.3.0** oder neuer: 5.1.0 hat Widgets und Szenen für Integrationen
+  geöffnet, 5.2.0 die Hausauswahl von „Meine Gladys-Häuser hinzufügen“, 5.3.0
+  die Suchbegriffe des Integrationskatalogs.
 - Ein Ort kann nicht bearbeitet werden: Um eine andere Gemeinde zu überwachen,
   entferne ihn und füge einen neuen hinzu.

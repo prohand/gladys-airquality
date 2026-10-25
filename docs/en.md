@@ -305,7 +305,8 @@ read together, in one request per CAMS model.
 - Outside Europe the model is **four times coarser** (~40 km against ~11 km): it
   describes a regional background well, a street less so.
 - Twenty locations maximum.
-- Gladys **5.2.0** or later: 5.1.0 opened widgets and scenes to integrations,
-  5.2.0 the house picker of "Add my Gladys houses".
+- Gladys **5.3.0** or later: 5.1.0 opened widgets and scenes to integrations,
+  5.2.0 the house picker of "Add my Gladys houses", 5.3.0 the search keywords
+  of the integration catalog.
 - A location cannot be edited: to watch another commune, remove it and add a new
   one.
