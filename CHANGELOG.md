@@ -6,6 +6,8 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-10-25
+
 ### Added
 
 - Search keywords for the Gladys integration catalog (pollution, AQI, ATMO, PM2.5, PM10, ozone, NO₂…).
@@ -141,7 +143,8 @@ First public release.
 
 - Shorten the catalog description to the 100 characters the store allows
 
-[Unreleased]: https://github.com/prohand/gladys-airquality/compare/v2.5.1...HEAD
+[Unreleased]: https://github.com/prohand/gladys-airquality/compare/v2.6.0...HEAD
+[2.6.0]: https://github.com/prohand/gladys-airquality/compare/v2.5.1...v2.6.0
 [2.5.1]: https://github.com/prohand/gladys-airquality/compare/v2.5.0...v2.5.1
 [2.5.0]: https://github.com/prohand/gladys-airquality/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/prohand/gladys-airquality/compare/v2.3.1...v2.4.0
