@@ -144,18 +144,11 @@ test('the device identity is derived from the location id, not from its name', (
   assert.equal(renamed, original);
 });
 
-// The categories the core validates against, as the integration may use them:
-// the SDK's list, plus the three gas concentration categories the core gained
-// after the SDK was last published (0.11.0 has no NO2_SENSOR). They are spelled
-// out rather than read from the source module, so that a typo in the source is
-// a failure here rather than a shared mistake — an unknown category has the
-// WHOLE discovery batch refused, which leaves the Discovery tab empty.
-const KNOWN_CATEGORIES = new Set([
-  ...Object.values(DEVICE_FEATURE_CATEGORIES),
-  'no2-sensor',
-  'o3-sensor',
-  'so2-sensor',
-]);
+// The categories the core validates against: the SDK's list, which mirrors the
+// core's `DEVICE_FEATURE_CATEGORIES` (0.16.0 carries the three gas concentration
+// categories too). An unknown category has the WHOLE discovery batch refused,
+// which leaves the Discovery tab empty.
+const KNOWN_CATEGORIES = new Set(Object.values(DEVICE_FEATURE_CATEGORIES));
 
 test('every published feature carries what the core requires', () => {
   const gladys = createFakeGladys();
@@ -240,8 +233,8 @@ test('every pollutant also gets its concentration, in µg/m³', () => {
   assert.equal(pm10.category, DEVICE_FEATURE_CATEGORIES.PM10_SENSOR);
 
   // The three gas categories, asserted as LITERALS on purpose: the core
-  // validates `category` against a flat list of these strings, and the SDK does
-  // not export a constant for them yet. A typo here empties the Discovery tab.
+  // validates `category` against a flat list of these strings, so the value the
+  // SDK constant carries is what matters, and a shared typo must fail here.
   // NOT `no2-matter-index-sensor`: that one is an integer Matter index.
   const gasCategories = {
     nitrogen_dioxide: 'no2-sensor',

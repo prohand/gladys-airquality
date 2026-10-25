@@ -314,8 +314,9 @@ lugares se leen juntos, con una petición por modelo CAMS.
 - Fuera de Europa el modelo es **cuatro veces más grueso** (~40 km frente a ~11
   km): describe bien un fondo regional, una calle no tanto.
 - Veinte lugares como máximo.
-- Gladys **5.2.0** o posterior: la 5.1.0 abrió los widgets y las escenas a las
+- Gladys **5.3.0** o posterior: la 5.1.0 abrió los widgets y las escenas a las
   integraciones, la 5.2.0 el selector de viviendas de «Añadir mis viviendas de
-  Gladys».
+  Gladys», la 5.3.0 las palabras clave de búsqueda del catálogo de
+  integraciones.
 - Un lugar no se puede editar: para vigilar otro municipio, elimínelo y añada
   uno nuevo.
