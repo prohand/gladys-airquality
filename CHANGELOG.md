@@ -6,6 +6,10 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.6.3] - 2026-11-16
+
+- Maintenance release, no functional change.
+
 ## [2.6.2] - 2026-11-16
 
 - Update `@gladysassistant/integration-sdk` to 0.16.1 (security update).
@@ -151,7 +155,8 @@ First public release.
 
 - Shorten the catalog description to the 100 characters the store allows
 
-[Unreleased]: https://github.com/prohand/gladys-airquality/compare/v2.6.2...HEAD
+[Unreleased]: https://github.com/prohand/gladys-airquality/compare/v2.6.3...HEAD
+[2.6.3]: https://github.com/prohand/gladys-airquality/compare/v2.6.2...v2.6.3
 [2.6.2]: https://github.com/prohand/gladys-airquality/compare/v2.6.1...v2.6.2
 [2.6.1]: https://github.com/prohand/gladys-airquality/compare/v2.6.0...v2.6.1
 [2.6.0]: https://github.com/prohand/gladys-airquality/compare/v2.5.1...v2.6.0
