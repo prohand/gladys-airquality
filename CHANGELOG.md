@@ -6,6 +6,10 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.6.1] - 2026-11-16
+
+- Maintenance release, no functional change.
+
 ## [2.6.0] - 2026-10-25
 
 ### Added
@@ -143,7 +147,8 @@ First public release.
 
 - Shorten the catalog description to the 100 characters the store allows
 
-[Unreleased]: https://github.com/prohand/gladys-airquality/compare/v2.6.0...HEAD
+[Unreleased]: https://github.com/prohand/gladys-airquality/compare/v2.6.1...HEAD
+[2.6.1]: https://github.com/prohand/gladys-airquality/compare/v2.6.0...v2.6.1
 [2.6.0]: https://github.com/prohand/gladys-airquality/compare/v2.5.1...v2.6.0
 [2.5.1]: https://github.com/prohand/gladys-airquality/compare/v2.5.0...v2.5.1
 [2.5.0]: https://github.com/prohand/gladys-airquality/compare/v2.4.0...v2.5.0
